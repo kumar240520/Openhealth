@@ -1,12 +1,19 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useHospital } from '../../context/HospitalContext';
 import { Activity } from 'lucide-react';
 
-export function getRoleDashboardPath(role, profile) {
+export function getRoleDashboardPath(role, profile, activeHospital) {
   switch (role) {
     case 'hospital_admin':
     case 'hospital_staff':
+      if (activeHospital && activeHospital.onboarding_completed === false) {
+        return '/hospital/onboarding';
+      }
+      if (profile && profile.onboarding_completed === false) {
+        return '/hospital/onboarding';
+      }
       return '/dashboard/hospital';
     case 'insurance_user':
     case 'ambulance_driver':
@@ -24,6 +31,8 @@ export function getRoleDashboardPath(role, profile) {
 
 export default function ProtectedRoute({ children, allowedRoles }) {
   const { user, profile, loading } = useAuth();
+  const hospitalContext = useHospital();
+  const activeHospital = hospitalContext?.activeHospital;
   const location = useLocation();
 
   if (loading) {
@@ -47,11 +56,12 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  const userRole = profile?.role || 'patient';
+  const userRole = profile?.role || user?.user_metadata?.role || 'patient';
+  const isHospitalUser = userRole === 'hospital_admin' || userRole === 'hospital_staff';
 
   // If route has specific allowed roles and current user is not authorized
   if (allowedRoles && !allowedRoles.includes(userRole)) {
-    const targetPath = getRoleDashboardPath(userRole, profile);
+    const targetPath = getRoleDashboardPath(userRole, profile, activeHospital);
     return <Navigate to={targetPath} replace />;
   }
 
@@ -60,5 +70,21 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/patient/onboarding" replace />;
   }
 
+  // If hospital admin/staff has not completed onboarding and is trying to access hospital dashboard
+  if (isHospitalUser) {
+    const isOnboardingDone = activeHospital?.onboarding_completed === true && profile?.onboarding_completed === true;
+    
+    // Intercept and redirect to onboarding if incomplete
+    if (!isOnboardingDone && location.pathname !== '/hospital/onboarding') {
+      return <Navigate to="/hospital/onboarding" replace />;
+    }
+
+    // If onboarding is already completed, prevent getting stuck on onboarding page
+    if (isOnboardingDone && location.pathname === '/hospital/onboarding') {
+      return <Navigate to="/hospital/dashboard" replace />;
+    }
+  }
+
   return children;
 }
+

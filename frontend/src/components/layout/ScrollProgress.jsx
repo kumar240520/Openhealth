@@ -123,7 +123,7 @@ export default function ScrollProgress({ activeChapter, onSelectChapter }) {
             const isHovered = hoveredId === ch.id;
 
             return (
-              <button
+              <motion.button
                 key={ch.id}
                 layout
                 onClick={() => handleSelect(ch.id)}
@@ -193,7 +193,7 @@ export default function ScrollProgress({ activeChapter, onSelectChapter }) {
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </button>
+              </motion.button>
             );
           })}
         </LayoutGroup>

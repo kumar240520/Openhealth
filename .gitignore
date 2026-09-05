@@ -23,3 +23,5 @@ storage/temp/*
 Thumbs.db
 .vscode/
 .idea/
+scratch/
+*.timestamp-*.mjs
