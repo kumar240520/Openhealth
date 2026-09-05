@@ -1,0 +1,109 @@
+.border-glow-card {
+  --edge-proximity: 0;
+  --cursor-angle: 45deg;
+  --edge-sensitivity: 25;
+  --color-sensitivity: calc(var(--edge-sensitivity) + 15);
+  --border-radius: 30px;
+  --glow-padding: 30px;
+  --cone-spread: 25;
+
+  position: relative;
+  border-radius: var(--border-radius);
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg, rgba(8, 15, 30, 0.88));
+  overflow: visible;
+  box-shadow:
+    0 25px 60px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: box-shadow 0.3s ease;
+}
+
+/* Static subtle base border */
+.border-glow-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Dynamic Glowing Border Stroke — STRICTLY ON THE BORDER RIM (NO INTERIOR FILL) */
+.border-glow-card::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: calc(var(--border-radius) + 1.5px);
+  padding: 2px;
+  background: conic-gradient(
+    from var(--cursor-angle, 45deg) at 50% 50%,
+    transparent 0deg,
+    var(--glow-color, #10b981) calc(var(--cone-spread, 25) * 1.5deg),
+    var(--glow-color-light, #06b6d4) calc(var(--cone-spread, 25) * 3deg),
+    transparent calc(var(--cone-spread, 25) * 4.5deg),
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 10;
+  opacity: calc((var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
+  transition: opacity 0.25s ease-out;
+}
+
+.border-glow-card:not(:hover):not(.sweep-active)::before {
+  opacity: 0;
+  transition: opacity 0.75s ease-in-out;
+}
+
+/* Outer Soft Glow on the Edge */
+.border-glow-card > .edge-light {
+  position: absolute;
+  inset: -15px;
+  border-radius: calc(var(--border-radius) + 15px);
+  pointer-events: none;
+  z-index: -1;
+  opacity: calc((var(--edge-proximity) - var(--edge-sensitivity)) / (100 - var(--edge-sensitivity)));
+  transition: opacity 0.25s ease-out;
+  -webkit-mask-image: conic-gradient(
+    from var(--cursor-angle, 45deg) at 50% 50%,
+    transparent 0deg,
+    black calc(var(--cone-spread, 25) * 2deg),
+    transparent calc(var(--cone-spread, 25) * 4deg),
+    transparent 360deg
+  );
+  mask-image: conic-gradient(
+    from var(--cursor-angle, 45deg) at 50% 50%,
+    transparent 0deg,
+    black calc(var(--cone-spread, 25) * 2deg),
+    transparent calc(var(--cone-spread, 25) * 4deg),
+    transparent 360deg
+  );
+}
+
+.border-glow-card:not(:hover):not(.sweep-active) > .edge-light {
+  opacity: 0;
+  transition: opacity 0.75s ease-in-out;
+}
+
+.border-glow-card > .edge-light::before {
+  content: "";
+  position: absolute;
+  inset: 15px;
+  border-radius: var(--border-radius);
+  box-shadow:
+    0 0 15px 1px var(--glow-color, rgba(16, 185, 129, 0.6)),
+    0 0 30px 4px var(--glow-color-light, rgba(6, 182, 212, 0.4));
+}
+
+.border-glow-inner {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}

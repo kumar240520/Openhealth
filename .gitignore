@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build Outputs
+dist/
+build/
+*.log
+
+# Storage & Temporary Files
+storage/temp/*
+!storage/temp/.gitkeep
+
+# IDE & OS Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

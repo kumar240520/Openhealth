@@ -1,0 +1,72 @@
+@property --border-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes rainbowBorderRotate {
+  0% {
+    --border-angle: 0deg;
+    transform: rotate(0deg);
+  }
+  100% {
+    --border-angle: 360deg;
+    transform: rotate(360deg);
+  }
+}
+
+.gradient-border-wrapper {
+  position: relative;
+  border-radius: var(--gb-radius, 20px);
+  padding: var(--gb-width, 2px);
+  overflow: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+.gradient-border-glow {
+  position: absolute;
+  inset: -20px;
+  background: conic-gradient(
+    from var(--border-angle, 0deg),
+    #22d3ee,
+    #34d399,
+    #fbbf24,
+    #f43f5e,
+    #a855f7,
+    #3b82f6,
+    #22d3ee
+  );
+  animation: rainbowBorderRotate var(--gb-speed, 4s) linear infinite;
+  filter: blur(var(--gb-glow-blur, 16px));
+  opacity: var(--gb-glow-opacity, 0.6);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.gradient-border-stroke {
+  position: absolute;
+  inset: -150%;
+  background: conic-gradient(
+    from var(--border-angle, 0deg),
+    var(--gb-color-1, #22d3ee),
+    var(--gb-color-2, #34d399),
+    var(--gb-color-3, #fbbf24),
+    var(--gb-color-4, #f43f5e),
+    var(--gb-color-5, #a855f7),
+    var(--gb-color-6, #3b82f6),
+    var(--gb-color-1, #22d3ee)
+  );
+  animation: rainbowBorderRotate var(--gb-speed, 4s) linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.gradient-border-content {
+  position: relative;
+  background-color: var(--gb-bg, #070c18);
+  border-radius: calc(var(--gb-radius, 20px) - var(--gb-width, 2px));
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
