@@ -268,6 +268,8 @@ export function AuthProvider({ children }) {
   // Sign out
   const signOut = async () => {
     try {
+      localStorage.removeItem('openhealth_active_hospital_id');
+      sessionStorage.removeItem('hospital_onboarding_dismissed');
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       setUser(null);

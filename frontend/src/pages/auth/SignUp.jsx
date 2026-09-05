@@ -201,6 +201,20 @@ export default function SignUp({ onNavigate }) {
 
       // If user is auto-confirmed with a session
       if (data?.session) {
+        if (accountType === 'hospital' && formData.hospitalName) {
+          try {
+            const { data: provHosp } = await supabase.rpc('provision_hospital_account', {
+              p_hospital_name: formData.hospitalName.trim(),
+              p_city: 'Indore',
+              p_phone: formData.phone.trim() || null
+            });
+            if (provHosp?.id) {
+              localStorage.setItem('openhealth_active_hospital_id', provHosp.id);
+            }
+          } catch (provErr) {
+            console.warn('Immediate provision warning:', provErr);
+          }
+        }
         setStep(3);
       } else {
         // Confirmation required -> Transition directly to Step 2 OTP Verification
@@ -247,6 +261,22 @@ export default function SignUp({ onNavigate }) {
         }
       } else {
         setLoading(false);
+      }
+
+      // Provision hospital facility immediately upon verification
+      if (accountType === 'hospital' && formData.hospitalName) {
+        try {
+          const { data: provHosp } = await supabase.rpc('provision_hospital_account', {
+            p_hospital_name: formData.hospitalName.trim(),
+            p_city: 'Indore',
+            p_phone: formData.phone.trim() || null
+          });
+          if (provHosp?.id) {
+            localStorage.setItem('openhealth_active_hospital_id', provHosp.id);
+          }
+        } catch (provErr) {
+          console.warn('Post-verification provision warning:', provErr);
+        }
       }
 
       setStep(3);
