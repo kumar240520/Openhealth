@@ -28,6 +28,14 @@ import HospitalSettings from '../pages/hospital/HospitalSettings';
 import { HospitalProvider } from '../context/HospitalContext';
 import ProviderDashboard from '../pages/provider/ProviderDashboard';
 import AdminDashboard from '../pages/admin/AdminDashboard';
+import AdminUsers from '../pages/admin/AdminUsers';
+import AdminHospitals from '../pages/admin/AdminHospitals';
+import AdminDoctors from '../pages/admin/AdminDoctors';
+import AdminVerification from '../pages/admin/AdminVerification';
+import AdminSchemes from '../pages/admin/AdminSchemes';
+import AdminInsurance from '../pages/admin/AdminInsurance';
+import AdminAnalytics from '../pages/admin/AdminAnalytics';
+import AdminAuditLogs from '../pages/admin/AdminAuditLogs';
 import PatientFeaturePage from '../pages/patient/PatientFeaturePage';
 import PatientBookings from '../pages/patient/PatientBookings';
 import PatientEmergency from '../pages/patient/PatientEmergency';
@@ -226,11 +234,78 @@ export default function AppRoutes() {
                 </ProtectedRoute>
               } 
             />
+            {/* Platform Master Admin Portal Suite (9 Pages) */}
+            <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/dashboard/admin" element={<Navigate to="/admin/dashboard" replace />} />
             <Route 
-              path="/dashboard/admin" 
+              path="/admin/dashboard" 
               element={
                 <ProtectedRoute allowedRoles={['platform_admin']}>
                   <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/users" 
+              element={
+                <ProtectedRoute allowedRoles={['platform_admin']}>
+                  <AdminUsers />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/hospitals" 
+              element={
+                <ProtectedRoute allowedRoles={['platform_admin']}>
+                  <AdminHospitals />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/doctors" 
+              element={
+                <ProtectedRoute allowedRoles={['platform_admin']}>
+                  <AdminDoctors />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/verification" 
+              element={
+                <ProtectedRoute allowedRoles={['platform_admin']}>
+                  <AdminVerification />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/schemes" 
+              element={
+                <ProtectedRoute allowedRoles={['platform_admin']}>
+                  <AdminSchemes />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/insurance" 
+              element={
+                <ProtectedRoute allowedRoles={['platform_admin']}>
+                  <AdminInsurance />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/analytics" 
+              element={
+                <ProtectedRoute allowedRoles={['platform_admin']}>
+                  <AdminAnalytics />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/audit-logs" 
+              element={
+                <ProtectedRoute allowedRoles={['platform_admin']}>
+                  <AdminAuditLogs />
                 </ProtectedRoute>
               } 
             />
