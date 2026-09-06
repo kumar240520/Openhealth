@@ -682,7 +682,71 @@
 
 ---
 
+### PAGE 27: Dynamic Multi-Modal AI Clinical Triage Modal
+- **Component**: `AIFindCareModal.jsx`
+- **Route / Trigger**: Accessible from `AppNavbar.jsx` (`+ Find Care`), `HospitalMarketplace.jsx`, and `LandingPage.jsx`
+- **Role**: Public / Guest & Patient (`optionalAuth` supported)
+- **Modal Layout**: Multi-tab clinical intake modal featuring 4 distinct modes, dynamic Gemini AI triage processing, urgency scoring, doctor consultation cards, and pre-filtered marketplace redirection.
+
+#### Component Hierarchy
+- `ModalHeader` (Sparkle badge, "Find the Right Healthcare", dismiss button)
+- `IntakeModeTabs`:
+  1. `Search Department`: 1-click grid of 12+ specialties (Cardiology, Orthopedics, Neurology, Pediatrics, etc.)
+  2. `Enter Symptoms`: Clean textarea for descriptive patient health complaints + `[Analyze Symptoms →]` button
+  3. `Voice Symptoms`: Web Speech API audio intake with live visualizer, transcript deduplication, and `[Find Right Care →]` trigger
+  4. `Upload Report`: Drag-and-drop clinical lab report dropzone for Gemini document parsing
+- `DynamicAiResultsContainer` (Shown once analysis completes):
+  - `HeroRecommendationCard`:
+    - Department name with dynamic Lucide icon (`Brain` for Neuro, `Activity` for Ortho, `Heart` for Cardio, `Eye` for Ophthal, `Baby` for Pediatrics, `Stethoscope` for Medicine)
+    - Triage Urgency Badge (`Emergency` [Crimson], `Urgent` [Amber], `Routine` [Emerald])
+    - Plain-English clinical reasoning and key symptom tags
+    - Action CTA: `[Browse {Department} Hospitals in {City} →]`
+  - `MatchedSpecialistsSection`:
+    - Renders top verified doctor cards queried live from `public.doctors` matching predicted specialty
+    - Displays doctor portrait, experience, qualification, hospital affiliation, and consultation fee (₹)
+    - `[Book Appointment]` button opening appointment reservation modal
+
+#### Functional Buttons & Interactive Controls
+| Button / Control | Variant | Trigger / Handler | Target Navigation / Action | Backend Wiring |
+|---|---|---|---|---|
+| **Analyze Symptoms** | Primary Blue Solid | Tap | Submits narrative to Gemini triage engine | `POST /api/v1/ai/recommend` |
+| **Start Voice Dictation** | Red/Blue Mic Pulse | Tap | Activates Web Speech API listening loop | Browser SpeechRecognition API |
+| **Browse Department Hospitals** | Emerald Solid | Tap | Redirects to `/app/hospitals?specialty={dept}&city={city}` | Client route with query params |
+| **Doctor Book Consultation**| Royal Blue Solid | Tap | Opens `BookAppointmentModal` for matched doctor | `POST /api/v1/bookings` |
+
+---
+
+### PAGE 28: Platform Master Admin Verification & Credential Audit Portal
+- **Component**: `AdminVerification.jsx` & `AuditDetailModal.jsx`
+- **Route**: `/admin/verification` (also mounted inside `AdminDashboard.jsx`)
+- **Role**: `platform_admin` (Master Admin: `hiteshkumar240520040@gmail.com`)
+- **Layout**: Moderation console with summary KPI counters, 3-tab review table (`Pending Verification`, `Verified Institutions`, `Rejected Applications`), and side-by-side document inspection modal.
+
+#### Component Hierarchy
+- `AdminHeader` (Super-Admin status badge, platform telemetry summary)
+- `VerificationKpiRow` (Pending Verifications, Active Facilities, Rejections, Average Verification SLA)
+- `ModerationTabs` (`Pending [N]`, `Verified [N]`, `Rejected [N]`)
+- `HospitalVerificationTable`:
+  - Hospital Name, License / Registration Number, Facility Type, City/State, Application Date
+  - Accreditations Pill (`NABH`, `JCI`, `Govt Certified`)
+  - Action CTA: `[Inspect Credentials & Audit]`
+- `AuditDetailModal` (Side-by-side inspection):
+  - Left pane: PDF/Image viewer for medical establishment license and council registration
+  - Right pane: Metadata checklist (Bed capacity declaration, trauma unit, doctor count, address)
+  - Audit Notes textarea
+  - Footer Action: `[Approve & Verify Facility]` (Green) vs `[Reject Application]` (Red)
+
+#### Functional Buttons & Interactive Controls
+| Button / Control | Variant | Trigger / Handler | Target Navigation / Action | Backend Wiring |
+|---|---|---|---|---|
+| **Inspect Credentials** | Slate Outline | Tap | Opens `AuditDetailModal` with full documents | Reads `hospital_documents` & `hospitals` |
+| **Approve & Verify Facility** | Emerald Success Solid | Tap | Updates hospital status to `verified`, logs audit | `POST /api/v1/admin/hospitals/:id/verify` |
+| **Reject Application** | Crimson Alert Solid | Tap | Updates hospital status to `rejected` with notes | `POST /api/v1/admin/hospitals/:id/reject` |
+
+---
+
 ## 4. Supabase Database Wiring & Realtime CDC Channels
+
 
 ### 4.1 Core Tables & Field Mappings
 | Table Name | Entity | Critical Columns for Mobile App Binding |

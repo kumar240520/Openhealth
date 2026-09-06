@@ -72,9 +72,11 @@ The Express API acts as the central business orchestrator structured in layered 
   - `bookingController.js`: Bed holds, doctor consultations, and cancellation lifecycles.
   - `billController.js`: Bill uploads, 3-way comparative benchmark analysis, and shock detection.
   - `aiController.js`: Multi-modal symptom, report, and bill interpretation.
-- `routes/`: Endpoint routing definitions under `/api/v1/` with role guards and public exceptions (`/patient/scan/:uid`).
+- `routes/`: Endpoint routing definitions under `/api/v1/` with role guards, optional authentication (`optionalAuth`), and public exceptions (`/patient/scan/:uid`).
 - `services/`: Encapsulates business logic across domain modules:
-  - `search/`, `hospital/`, `beds/`, `bookings/`, `ai/`, `documents/`, `bills/`, `reports/`, `costs/`, `insurance/`, `schemes/`, `transparency/`
+  - `search/`, `hospital/`, `beds/`, `bookings/`, `documents/`, `bills/`, `reports/`, `costs/`, `insurance/`, `schemes/`, `transparency/`
+  - **`services/ai/`**: Multi-Modal Clinical Triage & Report Analysis Domain:
+    - `aiRecommendationService.js`: Multi-model Google Gemini integration (`gemini-3.5-flash-lite`, `gemini-3.6-flash`, `gemini-flash-latest`) analyzing symptom text or speech transcripts, mapping dynamically across 15+ specialties without hardcoded bias, and executing relational database queries for matching doctors and hospitals with live bed counts.
   - **`services/emergency/`**: Dedicated Emergency & Ambulance Domain:
     - `emergencyService.js` (Session orchestration & state machine)
     - `hospitalMatchingService.js` (Proximity, ICU availability, capability ranking)
@@ -82,7 +84,7 @@ The Express API acts as the central business orchestrator structured in layered 
     - `emergencyTrackingService.js` (Realtime telemetry & status updates)
   - **Automated Lifecycle Notifications**: Integrated into `bedService.js`, `bookingService.js`, and `billService.js` to dispatch verified records to `public.notifications`.
   - **Automated Expiry Sweeper**: `bookingService.js` batch updates expired bed reservations (`expires_at <= now` and status `'held'`) to `'cancelled'` in PostgreSQL.
-- `middleware/`: Auth verification, role authorization, validation, rate limiting, error handling.
+- `middleware/`: Auth verification (`requireAuth`), optional authentication (`optionalAuth`), role authorization (`requireRole`), validation, rate limiting, error handling.
 
 ## 5. Storage Architecture
 Supabase Storage object store organized into private and semi-private buckets:
@@ -144,9 +146,16 @@ PostgreSQL hosted on Supabase serves as the relational datastore comprising **33
 33. **`audit_logs`**: System security logs (`id`, `user_id`, `action`, `entity_type`, `entity_id`, `metadata` JSONB, `ip_address`, `created_at`).
 
 ## 7. AI Architecture & Boundaries
-The Python FastAPI service executes specialized AI tasks (`reportAnalyzer.py`, `billAnalyzer.py`, `ocrService.py`):
-1. **PII Masking Pipeline**: Uploaded documents are stripped of personal health identifiers before OCR/LLM processing.
-2. **AI Boundary Classification**: The platform strictly distinguishes four data tiers:
+The platform integrates a hybrid AI pipeline combining Google Gemini LLMs and Python FastAPI services:
+1. **Multi-Modal Gemini Clinical Triage Pipeline (`aiRecommendationService.js`)**:
+   - Google Gemini candidate model fallback cascade (`gemini-3.5-flash-lite`, `gemini-3.6-flash`, `gemini-flash-latest`).
+   - Analyzes raw clinical symptom text, speech voice dictation transcripts, or extracted medical documents.
+   - Dynamically evaluates conditions across 15+ specialties (Neurology, Orthopedics, Pediatrics, Laparoscopic Surgery, Gastroenterology, Dermatology, ENT, Ophthalmology, Pulmonology, Psychiatry, Obstetrics, Nephrology, etc.) with urgency risk assessment (`Emergency`, `Urgent`, `Routine`).
+   - Dynamically matches specialist doctors and hospitals from Supabase PostgreSQL based on predicted specialty keywords without hardcoded fallbacks.
+2. **Python FastAPI Service (`reportAnalyzer.py`, `billAnalyzer.py`, `ocrService.py`)**:
+   - High-throughput document OCR parsing and PII masking.
+3. **PII Masking Pipeline**: Uploaded documents are stripped of personal health identifiers before OCR/LLM processing.
+4. **AI Boundary Classification**: The platform strictly distinguishes four data tiers:
    - **Extracted Fact**: Information present verbatim in document (e.g. lab value `14.2 g/dL`).
    - **Calculated Result**: Mathematically derived values (`variance_amount = final_amount - estimated_amount`).
    - **AI Interpretation**: Natural language explanation or categorization.
@@ -158,6 +167,7 @@ The Python FastAPI service executes specialized AI tasks (`reportAnalyzer.py`, `
 
 ## 9. Authorization Architecture
 - Middleware validates JWT and matches requested entity against `hospital_users`, `ambulance_requests`, or `patient_id`.
+- Public discovery endpoints leverage `optionalAuth` to allow frictionless exploration by guest visitors.
 - RLS at database level acts as the ultimate security boundary.
 
 ## 10. Multi-Tenant Architecture
@@ -167,22 +177,25 @@ The Python FastAPI service executes specialized AI tasks (`reportAnalyzer.py`, `
 - Patient records carry `patient_id` referencing `auth.uid()`. RLS policy: `USING (auth.uid() = patient_id)`.
 
 ## 12. Hospital Data Isolation
-- Hospital staff access restricted to matching `hospital_id` in `hospital_users`.
+- Hospital staff access restricted to matching `hospital_id` in `hospital_users` and `hospital_memberships`.
 
 ## 13. Emergency & Ambulance Data Isolation
 - `emergency_sessions` and `ambulance_requests` are bound strictly to `patient_id` and assigned driver IDs.
 
-## 14. Platform Administration
-- Super-administrators (`platform_admin`) access system moderation, hospital verification, and audit logs.
+## 14. Platform & Hospital Administration
+- **Platform Master Admin (`platform_admin`)**: Held by master account `hiteshkumar240520040@gmail.com`. Unrestricted access to platform telemetry, hospital onboarding verification queue (`AdminVerification.jsx`), credential audit modal (`AuditDetailModal.jsx`), and system audit logs (`audit_logs`).
+- **Hospital Admin (`hospital_admin`)**: Scoped to verified facilities (e.g. `livanshukushwah@gmail.com` managing Bansal Hospital Gwalior). Authority over bed inventory toggles, doctor rosters, department management, and incoming reservations.
 
 ## 15. API Architecture
 Base URL: `/api/v1`
 
 ### Endpoint Domains
-- **Auth**: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
-- **Users**: `GET /api/users/me`, `PATCH /api/users/me`, `GET /api/users/me/profile`
-- **Hospitals**: `GET /api/hospitals`, `GET /api/hospitals/:id`, `POST /api/hospitals`, `PATCH /api/hospitals/:id`
-- **Emergency & Ambulance (New Domain)**:
+- **Auth**: `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`
+- **Users**: `GET /api/v1/users/me`, `PATCH /api/v1/users/me`, `GET /api/v1/users/me/profile`
+- **AI Triage & Discovery (Dynamic)**:
+  - `POST /api/v1/ai/recommend` (Public/Optional Auth — Multi-modal symptom, voice, and report triage with live database doctor matching)
+- **Hospitals**: `GET /api/v1/hospitals`, `GET /api/v1/hospitals/:id`, `POST /api/v1/hospitals`, `PATCH /api/v1/hospitals/:id`
+- **Emergency & Ambulance (Active Orchestration)**:
   - `POST /api/v1/emergency/session` (Automatic orchestration: location -> hospital match -> ambulance dispatch)
   - `GET  /api/v1/emergency/session/:id`
   - `GET  /api/v1/emergency/session/:id/hospitals`
@@ -190,17 +203,17 @@ Base URL: `/api/v1`
   - `GET  /api/v1/emergency/session/:id/ambulance`
   - `POST /api/v1/emergency/session/:id/cancel`
   - `GET  /api/v1/emergency/session/:id/status`
-- **Search**: `GET /api/search`, `GET /api/search/hospitals`, `POST /api/search/smart-match`
-- **Beds**: `GET /api/beds/search`, `GET /api/hospitals/:id/beds`, `PATCH /api/hospitals/:id/beds`, `POST /api/beds/reservations`
-- **Bookings**: `GET /api/bookings`, `POST /api/bookings`, `GET /api/bookings/:id`, `POST /api/bookings/:id/cancel`
-- **Packages**: `GET /api/packages`, `POST /api/hospitals/:id/packages`
-- **Documents**: `POST /api/documents`, `GET /api/documents`, `POST /api/documents/:id/analyze`
-- **Reports**: `POST /api/reports/analyze`, `GET /api/reports/:id`
-- **Bills**: `POST /api/bills`, `GET /api/bills/:id`, `POST /api/bills/:id/analyze`, `GET /api/bills/:id/shock-index`
-- **Cost**: `POST /api/cost/predict`, `GET /api/cost/predictions`
-- **Insurance & Schemes**: `GET /api/insurance/providers`, `POST /api/insurance/check`, `POST /api/schemes/check-eligibility`
-- **Transparency**: `GET /api/transparency/hospitals`, `GET /api/transparency/hospitals/:id`
-- **Admin**: `GET /api/admin/dashboard`, `PATCH /api/admin/hospitals/:id/verify`
+- **Search**: `GET /api/v1/search`, `GET /api/v1/search/hospitals`, `POST /api/v1/search/smart-match`
+- **Beds**: `GET /api/v1/beds/search`, `GET /api/v1/hospitals/:id/beds`, `PATCH /api/v1/hospitals/:id/beds`, `POST /api/v1/beds/reservations`
+- **Bookings**: `GET /api/v1/bookings`, `POST /api/v1/bookings`, `GET /api/v1/bookings/:id`, `POST /api/v1/bookings/:id/cancel`
+- **Packages**: `GET /api/v1/packages`, `POST /api/v1/hospitals/:id/packages`
+- **Documents & Reports**: `POST /api/v1/documents`, `GET /api/v1/documents`, `POST /api/v1/reports/analyze`, `GET /api/v1/reports/:id`
+- **Bills**: `POST /api/v1/bills`, `GET /api/v1/bills/:id`, `POST /api/v1/bills/analyze`, `GET /api/v1/bills/:id/shock-index`
+- **Cost**: `POST /api/v1/cost/predict`, `GET /api/v1/cost/predictions`
+- **Insurance & Schemes**: `GET /api/v1/insurance/providers`, `POST /api/v1/insurance/check`, `POST /api/v1/schemes/check-eligibility`
+- **Transparency**: `GET /api/v1/transparency/hospitals`, `GET /api/v1/transparency/hospitals/:id`
+- **Admin**: `GET /api/v1/admin/dashboard`, `GET /api/v1/admin/hospitals/pending`, `POST /api/v1/admin/hospitals/:id/verify`, `PATCH /api/v1/admin/hospitals/:id/verify`
+
 
 ## 16. Request Lifecycle
 Client Request -> Express Middleware (Auth/Role/Sanitization) -> Controller -> Emergency / Domain Service -> Database (RLS) / Geolocation Service -> Standardized JSON Response.

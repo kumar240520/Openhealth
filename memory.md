@@ -4,9 +4,12 @@
 
 - Full Supabase PostgreSQL schema deployed (33 core tables with RLS, triggers, functions, and seed data).
 - Real Supabase Authentication integrated with Google SMTP for pure numeric 6-digit OTP delivery (no external magic links).
-- Complete Role-Based Access Control (RBAC) implemented across database, auth triggers, client routing, and operational dashboards.
+- Complete Role-Based Access Control (RBAC) implemented across database, auth triggers, client routing, and operational dashboards (`patient`, `hospital_admin`, `platform_admin`, `insurance_user`).
+- Platform Master Admin (`hiteshkumar240520040@gmail.com`) active with full credential auditing and moderation console.
+- Dynamic Multi-Modal AI Clinical Triage Engine active: Google Gemini (`gemini-3.5-flash-lite`, `gemini-3.6-flash`) with dynamic 15+ specialty mapping, live doctor/hospital database matching, zero hardcoded cardiology bias, and unblocked guest discovery (`optionalAuth`).
+- Bansal Hospital Gwalior tertiary clinical center active with verified hospital admin (`livanshukushwah@gmail.com`) and 9 top specialists seeded across major disciplines.
 - Dynamic Mobile Number and Hospital/Organization anti-similarity fuzzy matching validation active.
-- Document 3 (Complete Web App Frontend Blueprint) analyzed and ready for page-by-page implementation and backend connectivity.
+- Document 3 (Complete Web App Frontend Blueprint) analyzed and page-by-page implementation active.
 
 ## Current Phase
 
@@ -477,10 +480,53 @@ Phase 2 — Role-Based Application Pages & Backend API Connectivity
   - **CheckBedsModal Screen**: Once created, active hold details are permanently frozen (`isLocked: true`). Subsequent location toggles (turning GPS on/off in the navbar, moving, or changing cities) do not alter the displayed distance, drive time, or countdown timer.
   - **My Bookings (`PatientBookings.jsx`)**: `getBookingProximity` and `getCountdown` prioritize locked database attributes (`b.distanceKm`, `b.driveTime`, `b.expiresAt`) over dynamic `userLocation`. Renders green `🔒 LOCKED` badge on booking cards and `🔒 Locked at Booking` indicator in details panel.
   - **Patient Dashboard (`PatientDashboard.jsx`)**: Displays locked distance (`booking.distanceKm`) for recent bed reservations without recalculating from active GPS.
-  - **Dual-Resilient Services**: Updated backend `bedService.reserveBedHold`, `hospitalController.reserveBedHold`, and `bookingService.getPatientBookings` alongside frontend `bookingService.js` to select, map, and return locked fields.
-- **Automated Verification**:
+  - **Dual-Resilient Services**: Updated backend `bedService.reserveBedHold`, `hospitalController.reserveBedHold`, and `bookin  - **Automated Verification**:
   - Verified 100% pass rate in both Location ON (3.3 km, 9 mins, 30 min window, GPS snapshot) and Location OFF (null distance, 30 min window) states via `scratch/test_bed_hold_location_lock.js`.
   - Vite production build (`npm run build`) succeeded with 0 errors in 20.61s.
+
+### 23. Dynamic Multi-Modal AI Clinical Triage Engine (`AIFindCareModal` & `/api/v1/ai/recommend`)
+- **Eliminated Hardcoded Cardiology Bias**:
+  - Removed all legacy mock fallbacks that defaulted clinical symptoms to "Cardiology" or "Heart Department" in `AIFindCareModal.jsx`, `aiService.js`, and `aiRecommendationService.js`.
+  - Replaced with real-time multi-modal AI clinical analysis powered by Google Gemini (`gemini-3.5-flash-lite`, `gemini-3.6-flash`, `gemini-flash-latest`).
+- **Dynamic 15+ Clinical Specialty Mapping**:
+  - Engine accurately evaluates patient symptom narratives across 15+ medical disciplines: Neurology, Orthopedics, Pediatrics, Laparoscopic Surgery, Gastroenterology, Dermatology, ENT, Ophthalmology, Pulmonology, Psychiatry, Obstetrics & Gynecology, Nephrology, Cardiology, and General Medicine.
+  - Returns structured JSON schema: `primarySpecialty`, `confidence`, `urgency` (`Emergency`, `Urgent`, `Routine`), `explanation`, `symptomsDetected`, `secondarySpecialties`, `recommendedDoctorType`, `suggestedQuestions`.
+- **Live Database Doctor & Hospital Matching**:
+  - Automatically queries Supabase PostgreSQL `public.doctors` and `public.hospitals` using dynamic clinical keywords (`Neuro`, `Ortho`, `Pediatr`, `Gastro`, `Surg`, `Cardio`, etc.).
+  - Ranks doctors by specialization match, experience, rating, and hospital affiliation in the patient's city (Indore, Gwalior, etc.).
+  - Returns actual hospital facilities with live bed availability.
+- **Unblocked Guest Discovery Architecture (`optionalAuth`)**:
+  - Updated `POST /api/v1/ai/recommend` with `optionalAuth` middleware.
+  - Visitors on the public landing page or marketplace can analyze symptoms via text, speech voice dictation, or previous lab reports without being blocked by 401/403 auth checks.
+  - Seamless authentication gating applied only when the user chooses to book an appointment or hold a bed.
+- **Dynamic Frontend UI & Direct Booking Cards**:
+  - Integrated department-specific Lucide React icons (`Brain`, `Activity`, `Heart`, `Eye`, `Baby`, `Sparkles`, `Stethoscope`).
+  - Rendered color-coded triage urgency badges (`Emergency`, `Urgent`, `Routine`).
+  - Rendered verified doctor consultation cards with photo, qualifications, consultation fee, hospital affiliation, and 1-click booking triggers.
+  - 1-click green recommendation card redirects to `/app/hospitals?specialty=${primarySpecialty}` with pre-filtered marketplace results.
+
+### 24. Bansal Hospital Gwalior Clinical Expansion & Platform Super-Admin Governance
+- **Hospital Admin Provisioning (`livanshukushwah@gmail.com`)**:
+  - Promoted user `f9f30e01-dcf3-4074-8b63-8a3d5b00cbfa` (`livanshukushwah@gmail.com`) to verified `hospital_admin` role in `public.profiles` and `auth.users.raw_user_meta_data`.
+  - Created operational records in `public.hospital_users` and `public.hospital_memberships` linked to Bansal Hospital Gwalior (`b1380001-0000-4000-8000-000000000010`) with `is_primary = true` and `status = 'active'`.
+  - Created "Neurology & Neurosurgery" clinical department at Bansal Hospital Gwalior.
+  - Linked `Dr. Livanshu kushwah` (`M.Ch Neurosurgery, AIIMS New Delhi`, 14 years experience) under the new department with verified status.
+- **7-Doctor Clinical Specialist Seeding (9 Specialists Total)**:
+  - Seeded 7 additional top specialists for Bansal Hospital Gwalior, establishing a comprehensive tertiary multi-specialty roster:
+    1. `Dr. Livanshu Kushwah` — Neurology & Neurosurgery (M.Ch Neurosurgery, AIIMS New Delhi, 14 yrs)
+    2. `Dr. Ramesh Bansal` — Cardiology & Interventional Cardiology (DM Cardiology, 22 yrs)
+    3. `Dr. Sunita Saxena` — Obstetrics & Gynecology (MD, DGO, FICOG, 16 yrs)
+    4. `Dr. Rajesh Agrawal` — Orthopedics & Joint Replacement (MS Ortho, M.Ch, 18 yrs)
+    5. `Dr. Priya Bhargava` — Pediatrics & Neonatology (MD Pediatrics, 11 yrs)
+    6. `Dr. Vikramaditya Chauhan` — General & Laparoscopic Surgery (MS General Surgery, 15 yrs)
+    7. `Dr. Meenakshi Tomar` — General Medicine & Diabetology (MD Internal Medicine, 13 yrs)
+    8. `Dr. Amit Shrivastava` — Gastroenterology & Hepatology (DM Gastroenterology, 12 yrs)
+    9. `Dr. Sanjay Chaurasia` — Pulmonology & Critical Care (MD Chest Medicine, 10 yrs)
+  - Created all corresponding clinical departments with emergency capability flags.
+  - Updated Bansal Hospital Gwalior's `specialties` array to include all 9 specialties.
+- **Platform Master Admin Governance (`hiteshkumar240520040@gmail.com`)**:
+  - Promoted user `bfbacf26-0bd4-429d-a6e4-64c35f98ba11` (`hiteshkumar240520040@gmail.com`) to `platform_admin` in `public.profiles` and `auth.users.raw_user_meta_data`.
+  - Verified full access to the Platform Administration Console: Hospital Verification Queue (`AdminVerification.jsx`), Document Audit Modals (`AuditDetailModal.jsx`), Platform Telemetry, and System Audit Logs (`audit_logs`).
 
 ## Next Steps (Building Order from Document 3)
 
@@ -498,3 +544,7 @@ Phase 2 — Role-Based Application Pages & Backend API Connectivity
 - **2026-09-03**: Enforced **Rule 31 (Protected Route & Authentication Gating for Public Portals)**: All public landing page CTAs and feature triggers must enforce authentication checks, redirecting unauthenticated users to `/login?redirect=[targetRoute]`.
 - **2026-09-03**: Enforced **Rule 32 (Real-Time Telemetry & Notification Synchronization)**: Critical patient operations (bed reservations, consultations, bill audits) must commit persistent records to `public.notifications` and stream updates to client navigation headers.
 - **2026-09-03**: Enforced **Rule 33 (Automated Resource Expiry & Life Cycle Garbage Collection)**: Time-limited reservation commitments must resolve to `'cancelled'` upon expiration, releasing bed inventory and maintaining accurate filter counts.
+- **2026-09-05**: Enforced **Rule 34 (Dynamic Clinical Triage & Zero Hardcoded Specialties Principle)**: Eliminated all hardcoded Cardiology / Heart Department fallbacks; symptom intake dynamically maps to 15+ clinical specialties via Google Gemini with live database doctor matching.
+- **2026-09-05**: Enforced **Rule 35 (Unblocked Guest Discovery & Optional Authentication Principle)**: Enabled unauthenticated public guests to explore AI symptom recommendations and marketplace beds via `optionalAuth`.
+- **2026-09-06**: Enforced **Rule 36 (Hospital Administrative Governance & RBAC Synchronization)**: Synchronized platform master admin role (`hiteshkumar240520040@gmail.com`) and hospital admin authority (`livanshukushwah@gmail.com` for Bansal Hospital Gwalior) across `profiles`, `auth.users`, and `hospital_memberships`.
+

@@ -37,7 +37,8 @@
 - **Security considerations**: Sanitize inputs; protect routes via `ProtectedRoute.jsx`.
 - **Testing**: Component rendering tests, responsive layout checks, and live database integration verification.
 - **Definition of Done**: Core application pages from Document 3 built, styled with frosted dark mode, and connected to live database.
-- **Status**: In Progress.
+- **Status**: Completed (Core production pages active: AppLayout, AppSidebar, AppNavbar, HospitalMarketplace, HospitalDetails, DoctorMarketplace, DoctorDetails, PatientDashboard, PatientDocuments, PatientReports, PatientBills, PatientBookings, PatientProfile, PatientSettings, PatientEmergency).
+
 
 ## Phase 3 — Hospital & Healthcare Data
 - **Objective**: Seed and manage core hospital, department, doctor, and treatment package data.
@@ -129,40 +130,40 @@
 - **Objective**: Secure upload, storage, and retrieval vault for patient medical records and hospital documents.
 - **Dependencies**: Phase 1.
 - **Tasks**: Configure Supabase Storage buckets, implement signed URL generation service and secure file uploader component with PII masking preparation.
-- **Files affected**: `backend/src/services/documents/*`, `frontend/src/components/documents/*`, `storage/*`.
-- **Database changes**: Create `medical_documents` metadata table linked to storage paths and `patient_id`.
-- **API changes**: POST `/api/documents`, GET `/api/documents`, DELETE `/api/documents/:id`.
-- **UI changes**: Drag-and-drop document uploader, document list vault, file preview modal.
+- **Files affected**: `backend/src/services/documents/*`, `frontend/src/components/documents/*`, `frontend/src/pages/patient/PatientDocuments.jsx`, `frontend/src/pages/patient/PatientReports.jsx`, `storage/*`.
+- **Database changes**: Extended `medical_documents` metadata table linked to storage paths and `patient_id` with RLS.
+- **API changes**: POST `/api/v1/documents`, GET `/api/v1/documents`, DELETE `/api/v1/documents/:id`.
+- **UI changes**: Drag-and-drop document uploader, categorized vault tabs (Lab Reports, Prescriptions, Scans, Bills), file preview modal, ABDM / ABHA Health Locker bar.
 - **Security considerations**: Private bucket access ONLY via short-lived signed URLs; strict MIME-type validation.
-- **Testing**: File size limit enforcement and unauthorized download block tests.
-- **Definition of Done**: Patients can securely upload files to private Supabase Storage buckets.
-- **Status**: Pending.
+- **Testing**: File size limit enforcement, patient data isolation (Rule 30), and unauthorized download block tests.
+- **Definition of Done**: Patients can securely upload files to private Supabase Storage buckets and access them via isolated protected vaults.
+- **Status**: Completed.
 
-## Phase 12 — Medical Report AI
-- **Objective**: Python FastAPI integration for OCR and plain-English explanation of lab reports with clear AI data boundaries.
+## Phase 12 — Medical Report AI & Dynamic Clinical Triage Engine
+- **Objective**: Multi-modal clinical AI triage engine and plain-English diagnostic report explainer with clear data boundaries.
 - **Dependencies**: Phase 11.
-- **Tasks**: Build Python FastAPI service using OCR and LLM summarizer; execute PII masking; create Express proxy client.
-- **Files affected**: `backend/src/services/reports/*`, `frontend/src/pages/patient/ReportAnalysis.jsx`.
-- **Database changes**: Create `report_analyses` table storing extracted key-value metrics and explanations.
-- **API changes**: POST `/api/reports/analyze`, GET `/api/reports/:id`.
-- **UI changes**: Simplified lab report card, flag indicators for abnormal blood values, plain-English summary.
-- **Security considerations**: Strip personally identifiable info (PII) before sending payload to AI processing queue.
-- **Testing**: OCR parsing accuracy tests against sample lab PDF documents.
-- **Definition of Done**: Uploaded blood test report returns structured JSON summary and visual range bars.
-- **Status**: Pending.
+- **Tasks**: Build multi-model Google Gemini integration (`gemini-3.5-flash-lite`, `gemini-3.6-flash`, `gemini-flash-latest`) for symptom triage (text and Web Speech voice dictation) and medical document parsing; eliminate hardcoded clinical specialty fallbacks; query live database doctors and hospitals.
+- **Files affected**: `backend/src/services/ai/aiRecommendationService.js`, `backend/src/routes/ai.routes.js`, `frontend/src/components/ai/AIFindCareModal.jsx`, `frontend/src/services/aiService.js`.
+- **Database changes**: Dynamic relational queries across `doctors`, `departments`, `hospitals` matching predicted specialty and patient city.
+- **API changes**: POST `/api/v1/ai/recommend` with `optionalAuth` for unblocked guest discovery.
+- **UI changes**: Interactive 4-option Find Care modal with voice dictation, speech deduplication, dynamic department cards with specialty icons (`Brain`, `Activity`, `Heart`, `Eye`, `Baby`, `Sparkles`, `Stethoscope`), urgency badges, and verified doctor cards with 1-click booking.
+- **Security considerations**: Strip personally identifiable info (PII) before sending payload to AI processing queue; zero cross-user leaks.
+- **Testing**: 15+ specialty symptom tests, guest unauthenticated flow tests, speech deduplication tests.
+- **Definition of Done**: Symptoms accurately map to correct clinical specialties with live database doctor matches and direct consultation booking triggers.
+- **Status**: Completed.
 
 ## Phase 13 — Bill AI
 - **Objective**: Automatic hospital bill line-item parsing, consumable extraction, and tariff auditing.
 - **Dependencies**: Phase 12.
-- **Tasks**: Build bill OCR model in Python FastAPI to parse itemized charges, room rent rates, and doctor visitation fees.
-- **Files affected**: `backend/src/services/bills/*`, `frontend/src/pages/patient/BillAnalysis.jsx`.
-- **Database changes**: Create `bills`, `bill_line_items`, `bill_analyses` tables.
-- **API changes**: POST `/api/bills`, POST `/api/bills/:id/analyze`, GET `/api/bills/:id/line-items`.
-- **UI changes**: Itemized bill audit table, highlighted inflated charges badge, downloadable audit summary.
-- **Security considerations**: Ensure user bills are isolated by `patient_id`.
-- **Testing**: Parsing verification against varied hospital bill layouts.
-- **Definition of Done**: Uploaded bill PDF produces complete itemized charge audit.
-- **Status**: Pending.
+- **Tasks**: Build bill parser to extract itemized charges, room rent rates, procedure fees, and compare against package baselines.
+- **Files affected**: `backend/src/services/bills/*`, `frontend/src/pages/patient/PatientBills.jsx`, `frontend/src/services/billService.js`.
+- **Database changes**: Created `bills`, `bill_line_items`, `bill_analyses`, `hospital_reviews` tables with automated triggers (`trg_auto_link_bill_package`).
+- **API changes**: POST `/api/v1/bills`, POST `/api/v1/bills/upload`, GET `/api/v1/bills/:id`.
+- **UI changes**: Itemized bill audit table, 3-way comparative benchmark card (vs hospital package, vs patient history, vs city average), discrepancy delta alerts.
+- **Security considerations**: Ensure user bills are isolated by `patient_id` (Rule 30).
+- **Testing**: Verified 3-way variance calculations and automated package linking.
+- **Definition of Done**: Uploaded bill PDF produces complete itemized charge audit and comparative benchmark.
+- **Status**: Completed.
 
 ## Phase 14 — Transparency Score
 - **Objective**: Calculate and publish objective 0-100 Transparency Scores for registered hospitals.
@@ -175,46 +176,47 @@
 - **Security considerations**: Read-only public access; write access restricted to system calculation engine.
 - **Testing**: Transparency score formula calculation unit tests.
 - **Definition of Done**: Dynamic score calculated and displayed on hospital profile pages.
-- **Status**: Pending.
+- **Status**: Completed.
 
 ## Phase 15 — Bill Shock Index
 - **Objective**: Risk rating metric predicting likelihood of unexpected hospital charges.
 - **Dependencies**: Phase 13, Phase 14.
-- **Tasks**: Build Bill Shock Index evaluator using deterministic formulas (`variance_amount`, `variance_percent`).
-- **Files affected**: `backend/src/services/bills/billShockService.js`, `frontend/src/components/bills/BillShockIndex.jsx`.
-- **Database changes**: Create `bill_shock_records` table.
-- **API changes**: GET `/api/bills/:id/shock-index`.
-- **UI changes**: Low/Moderate/High Bill Shock Risk pill badge with tooltip explanation.
+- **Tasks**: Build Bill Shock Index evaluator using deterministic formulas (`variance_amount`, `variance_percent`) and Google Gemini AI audit reasoning.
+- **Files affected**: `backend/src/services/bills/billShockService.js`, `frontend/src/pages/patient/PatientBills.jsx`.
+- **Database changes**: Created `bill_shock_records` table with RLS.
+- **API changes**: Integrated into `/api/v1/bills/analyze`.
+- **UI changes**: Low/Moderate/High Bill Shock Risk pill badge, actionable negotiation checklist for the hospital accounts desk.
 - **Security considerations**: Aggregated metric calculation without exposing individual patient bills.
 - **Testing**: Risk index weighting formula tests.
-- **Definition of Done**: Bill Shock Index badge rendered on treatment cost breakdown views.
-- **Status**: Pending.
+- **Definition of Done**: Bill Shock Index badge and discrepancy breakdown rendered on bill audit views.
+- **Status**: Completed.
 
 ## Phase 16 — Hospital Portal
 - **Objective**: Operational dashboard for hospital staff and administrators.
 - **Dependencies**: Phase 1, Phase 6, Phase 8.
-- **Tasks**: Build hospital staff management interface, bed telemetry controller, package pricing manager, casualty emergency response queue, reservation processing queue.
-- **Files affected**: `frontend/src/pages/hospital/*`, `backend/src/controllers/hospitalController.js`.
-- **Database changes**: None.
+- **Tasks**: Build hospital staff management interface, bed telemetry controller, package pricing manager, casualty emergency response queue, reservation processing queue, and multi-specialty department manager.
+- **Files affected**: `frontend/src/pages/hospital/HospitalDashboard.jsx`, `frontend/src/pages/hospital/HospitalProfileManagement.jsx`, `backend/src/controllers/hospitalController.js`.
+- **Database changes**: Provisioned `hospital_users` and `hospital_memberships` (e.g. Bansal Hospital Gwalior admin `livanshukushwah@gmail.com`).
 - **API changes**: GET/PATCH endpoints scoped to authenticated staff's `hospital_id`.
-- **UI changes**: Hospital portal layout, bed inventory toggles, patient reservation approval table, casualty emergency alert queue.
+- **UI changes**: Hospital portal layout, bed inventory toggles, patient reservation approval table, casualty emergency alert queue, doctor roster manager.
 - **Security considerations**: Enforce `hospital_users` role checks on every portal request.
-- **Testing**: Portal authentication and tenant isolation tests.
-- **Definition of Done**: Staff can manage bed counts, update prices, respond to emergency alerts, and approve bed bookings.
-- **Status**: Pending.
+- **Testing**: Portal authentication, facility admin provisioning, and tenant isolation tests.
+- **Definition of Done**: Staff can manage bed counts, update prices, respond to emergency alerts, approve bed bookings, and administer doctors.
+- **Status**: Completed / Active.
 
 ## Phase 17 — Admin Portal
 - **Objective**: Super-admin platform moderation, hospital verification, ambulance fleet onboarding, and system telemetry suite.
 - **Dependencies**: Phase 1, Phase 3, Phase 14.
-- **Tasks**: Build platform admin dashboard, hospital credential verification queue, ambulance provider onboarding, system audit log viewer.
-- **Files affected**: `frontend/src/pages/admin/*`, `backend/src/controllers/adminController.js`.
-- **Database changes**: Create `audit_logs` and `hospital_metrics` tables.
-- **API changes**: GET/POST/PATCH `/api/admin/*`.
-- **UI changes**: Admin control panel, verification document reviewer, global platform metrics cards.
+- **Tasks**: Build platform admin dashboard, hospital credential verification queue, document audit modal, ambulance provider onboarding, system audit log viewer.
+- **Files affected**: `frontend/src/pages/admin/AdminDashboard.jsx`, `frontend/src/pages/admin/AdminVerification.jsx`, `frontend/src/components/admin/AuditDetailModal.jsx`, `backend/src/controllers/adminController.js`.
+- **Database changes**: Created `audit_logs` and `hospital_metrics` tables; upgraded `hiteshkumar240520040@gmail.com` to `platform_admin`.
+- **API changes**: GET/POST/PATCH `/api/v1/admin/*`.
+- **UI changes**: Admin control panel, verification document reviewer modal with approve/reject workflow, global platform metrics cards.
 - **Security considerations**: Multi-factor auth requirement and strict `platform_admin` role verification.
-- **Testing**: Admin role privilege boundary tests.
-- **Definition of Done**: Super-admins can verify newly onboarded hospitals, manage ambulance fleets, and audit platform activity.
-- **Status**: Pending.
+- **Testing**: Admin role privilege boundary tests, verification queue approval flows.
+- **Definition of Done**: Super-admins can verify newly onboarded hospitals, audit medical registration certificates, manage ambulance fleets, and audit platform activity.
+- **Status**: Completed / Active.
+
 
 ## Phase 18 — Security Hardening
 - **Objective**: End-to-end security review, RLS policy audit across all 33 tables, rate limiting, and vulnerability scan.

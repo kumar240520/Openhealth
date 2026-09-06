@@ -34,6 +34,10 @@ USER CONFIRMS & TRACKS EN ROUTE TO HOSPITAL
 
 ## 🚀 Key Features
 
+- **Dynamic Multi-Modal AI Symptom Triage Engine**: Real-time clinical intake (text prompt, speech voice dictation, and medical lab report upload) powered by Google Gemini (`gemini-3.5-flash-lite`, `gemini-3.6-flash`). Dynamically maps patient symptoms across 15+ medical disciplines (Neurology, Orthopedics, Pediatrics, Laparoscopic Surgery, Gastroenterology, Pulmonology, etc.) with urgency scoring and zero hardcoded cardiology bias.
+- **Live Database Doctor & Hospital Matching**: Instant relational matching of AI-recommended specialties against Supabase PostgreSQL `doctors` and `hospitals` in the patient's city with 1-click consultation booking and bed reservations.
+- **Frictionless Public Discovery (`optionalAuth`)**: Unrestricted guest access to AI symptom triage and hospital exploration without authentication roadblocking, smoothly gating only at appointment commitment.
+- **Platform Master Admin & Hospital Governance**: Comprehensive super-admin verification console (`AdminVerification.jsx`) with credential auditing, hospital admin self-service management (`HospitalDashboard.jsx`), and multi-city clinical facility networks (Indore & Gwalior hubs, including Bansal Hospital Gwalior).
 - **Automatic Emergency Assistance & Ambulance Dispatch**: 1-Tap trigger auto-locates device GPS, ranks nearby verified ICU hospitals, requests ambulance (`AMB-104`), notifies casualty desk, and tracks real-time status.
 - **Real-Time Bed Intelligence & Auto-Cancellation**: Live telemetry on ICU, NICU, PICU, HDU, Oxygen, and General bed status (`Available = Total - Occupied - Reserved`). Automated batch cancellation releases expired holds back into available inventory.
 - **Printable Admission Slip & Scannable QR Identity**: Official hospital admission pass with patient vitals, booking slot, and scannable Patient UID QR code from `patient_profiles` with print-isolated styles (`@media print`).

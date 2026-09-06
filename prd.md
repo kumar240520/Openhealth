@@ -35,6 +35,9 @@ Modern healthcare suffers from extreme opacity:
 - **Platform Admin**: Super-administrator managing platform moderation, hospital verification, system configuration, and audit logs.
 
 ## 6. Core Value Proposition
+- **Dynamic Multi-Modal AI Clinical Triage**: Instant clinical evaluation of patient symptoms (text, speech-to-text voice, or lab reports) dynamically routed across 15+ disciplines with urgency scoring and zero hardcoded cardiology bias.
+- **Live Database Doctor & Bed Matching**: Immediate relational queries matching recommended departments to verified specialists and tertiary hospitals in the patient's city with 1-click booking triggers.
+- **Frictionless Public Discovery (`optionalAuth`)**: Unrestricted guest exploration of AI triage and hospital marketplace before enforcing authentication at booking commitment.
 - **Real-Time Bed Intelligence**: Live telemetry on ICU, NICU, PICU, HDU, Oxygen, and General bed status (`Available = Total - Occupied - Reserved`).
 - **Automatic Emergency Assistance & Ambulance Dispatch**: 1-Tap trigger auto-locates patient, matches nearest verified ICU hospital, requests ambulance, dispatches driver, and tracks status.
 - **Transparent Pricing & Bill Shock Index**: Unbundled procedure package estimates and historical bill auditing against benchmarks.
@@ -42,20 +45,22 @@ Modern healthcare suffers from extreme opacity:
 - **Unified Insurance & Scheme Intelligence**: Automated matching against government schemes (e.g. Ayushman Bharat / PM-JAY) and private policies.
 
 ## 7. Product Modules
-1. Healthcare Discovery & Search Module
-2. Hospital Transparency & Rating Module
-3. Bed Intelligence & Telemetry Module
-4. Emergency Care & Ambulance Orchestration Module
-5. Cost Intelligence & Bill Shock Analyzer Module
-6. Insurance & Government Scheme Matcher Module
-7. Medical Report & Document AI Vault Module
-8. Appointment & Bed Reservation Module
-9. Patient EHR Telemetry & Scannable QR ID Module
-10. Real-Time Cross-Module Notification Center
-11. Hospital Management Portal
-12. Platform Administration Portal
+1. Healthcare Discovery & Search Module (Omni-search, keyword tokenization, clinical synonym expansion)
+2. Dynamic Multi-Modal AI Clinical Triage Module (Gemini 3.5/3.6 Flash, voice dictation, doctor matching)
+3. Hospital Transparency & Rating Module
+4. Bed Intelligence & Telemetry Module
+5. Emergency Care & Ambulance Orchestration Module
+6. Cost Intelligence & Bill Shock Analyzer Module
+7. Insurance & Government Scheme Matcher Module
+8. Medical Report & Document AI Vault Module
+9. Appointment & Bed Reservation Module
+10. Patient EHR Telemetry & Scannable QR ID Module
+11. Real-Time Cross-Module Notification Center
+12. Hospital Management Portal & Self-Service Admin Console
+13. Platform Master Administration & Verification Portal
 
 ## 8. Functional Requirements
+- **Dynamic Multi-Modal AI Clinical Triage**: Evaluates freeform symptom narratives or voice inputs using Google Gemini without static biases, outputting primary specialty, confidence, triage urgency (`Emergency`, `Urgent`, `Routine`), reasoning, and live database doctor matches.
 - **Search & Discovery**: Multi-faceted search by specialty, procedure, location, doctor, and bed type with smart matching and clinical synonym expansion.
 - **Facility Operating Hours Evaluation**: Dynamic clock evaluation displaying live open/closed states (`Open • Closes [Time]` vs `Closed • Opens 8:00 AM`) with 24/7 trauma emergency badges.
 - **Automatic Emergency Orchestration**: Triggering 🚨 Emergency Mode auto-fetches device coordinates, ranks nearby verified ICU hospitals, creates an `emergency_session`, dispatches an ambulance, and displays live status telemetry.
@@ -65,6 +70,7 @@ Modern healthcare suffers from extreme opacity:
 - **Real-Time Notification System**: Automated event notifications triggered upon bed holds, doctor bookings, and bill analyses with live polling and categorized navigation pills.
 - **Protected Route Gating on Public Portals**: Automatic verification on landing page action triggers with intelligent redirection to `/login?redirect=[target]`.
 - **Cost Estimation & Bill Auditing**: Low-High range estimates, 3-way comparative benchmark analysis (vs package, vs history, vs city average), and Gemini AI bill shock analysis.
+- **Multi-City Hospital & Admin Governance**: Support for multi-city hospital networks (Indore & Gwalior hubs) with scoped facility admins (`livanshukushwah@gmail.com` at Bansal Hospital Gwalior) and global platform master admin (`hiteshkumar240520040@gmail.com`).
 
 ## 9. User Journeys
 - **Journey A (Automatic Emergency Assistance & Ambulance Dispatch)**:

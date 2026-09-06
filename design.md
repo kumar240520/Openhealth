@@ -203,3 +203,34 @@ Every important screen must handle 6 standard UX states:
   - Open: Green badge (`Open • Closes [Time]`).
   - Closed: Red badge (`Closed • Opens 8:00 AM`) accompanied by a 24/7 Trauma Emergency Care note.
 
+## 35. Dynamic AI Clinical Triage & Department Visual Language
+- **Department Visual Iconography Mapping (`AIFindCareModal.jsx`)**:
+  - `Brain`: Neurology, Neurosurgery, Brain & Spine (`#6366f1` / Indigo)
+  - `Activity`: Orthopedics, Joint Replacement, Trauma Surgery (`#0284c7` / Sky Blue)
+  - `Heart`: Cardiology, Interventional Cardiology, Cardiothoracic Surgery (`#ef4444` / Crimson)
+  - `Eye`: Ophthalmology, Eye Care (`#0d9488` / Teal)
+  - `Baby`: Pediatrics, Neonatology, Child Health (`#f59e0b` / Amber)
+  - `Sparkles`: Dermatology, Cosmetology, Aesthetics (`#a855f7` / Purple)
+  - `Stethoscope`: General Medicine, Internal Medicine, Diabetology, Pulmonology (`#2563eb` / Royal Blue)
+- **Triage Urgency Badges**:
+  - `Emergency`: Pulsing crimson alert badge (`bg-red-500/10 text-red-700 border-red-200`) with emergency helpline suggestion.
+  - `Urgent`: Amber caution badge (`bg-amber-500/10 text-amber-700 border-amber-200`) recommending consultation within 24 hours.
+  - `Routine`: Emerald badge (`bg-emerald-500/10 text-emerald-700 border-emerald-200`) for elective or preventive consultation.
+- **AI Recommendation Results Box**:
+  - Hero recommendation container in frosted emerald (`bg-emerald-50/90 border border-emerald-200/90 rounded-2xl p-5`).
+  - Highlights the recommended clinical discipline in bold colored typography with matching icon.
+  - Plain-English clinical reasoning paragraph with detected symptom pills.
+  - Action CTA button: "Browse [Department] Hospitals in [City] →" redirecting with pre-filtered parameters.
+- **Verified Doctor Consultation Cards**:
+  - Micro-cards displaying doctor portrait, verification checkmark, qualifications, hospital affiliation, consultation fee (₹), and instant "Book Consultation" solid blue trigger.
+
+## 36. Administrative Governance & Credential Audit UI
+- **Hospital Credential Verification Queue (`AdminVerification.jsx`)**:
+  - 3-column moderation dashboard: Pending Verification, Verified Hospitals, Rejected Applications.
+  - Interactive table with hospital accreditation badges (`NABH`, `JCI`, `Govt Certified`), license numbers, city, and action buttons.
+- **Side-by-Side Audit Modal (`AuditDetailModal.jsx`)**:
+  - Left column: Uploaded institutional registration certificates and medical council accreditations.
+  - Right column: Hospital metadata inspection, bed capacity claims, address verification, and compliance checklist.
+  - Action footer: Green "Approve Hospital" button (triggers status update to `verified`), Amber "Request Additional Info", and Red "Reject Application" with mandatory audit notes logged into `public.audit_logs`.
+
+

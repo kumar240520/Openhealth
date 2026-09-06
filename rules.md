@@ -172,3 +172,18 @@
 - **Rule 33.2**: **Inventory Recirculation**: When a bed reservation expires or is cancelled by the patient, the corresponding reserved bed inventory in `hospital_beds` must be immediately decremented and restored to `available_beds`.
 - **Rule 33.3**: **Accurate Tab Categorization**: Status filters across booking views (`PatientBookings.jsx`) must evaluate expiration against the client and server clocks, strictly segregating active upcoming holds from cancelled/expired records.
 
+## 34. Dynamic Clinical Triage & Zero Hardcoded Specialties Principle
+- **Rule 34.1**: **Absolute Prohibition on Static Clinical Specialties**: The AI Clinical Triage engine, recommendation services (`aiRecommendationService.js`), routes (`ai.routes.js`), and frontend modals (`AIFindCareModal.jsx`) must NEVER default or hardcode a static department (such as cardiology or heart surgery) when user symptoms describe other conditions (e.g. headache, fracture, fever, rash, abdominal pain).
+- **Rule 34.2**: **Pure Dynamic LLM Extraction & Multi-Specialty Mapping**: All symptom submissions (text or voice transcripts) must be evaluated dynamically by Google Gemini LLM with structured JSON parsing across 15+ medical disciplines (Neurology, Orthopedics, Pediatrics, Laparoscopic Surgery, Gastroenterology, Dermatology, ENT, Ophthalmology, Pulmonology, Psychiatry, Obstetrics, Nephrology, etc.).
+- **Rule 34.3**: **Live Database Matching**: Specialist doctors and hospital departments presented in AI triage cards must be dynamically queried from Supabase PostgreSQL (`public.doctors`, `public.departments`, `public.hospitals`) matching the predicted medical department and patient's city.
+
+## 35. Unblocked Guest Discovery & Optional Authentication Principle
+- **Rule 35.1**: **Frictionless Public AI Care Discovery**: Public care discovery features, including the `AIFindCareModal`, public marketplace filters, and `/api/v1/ai/recommend`, MUST support unauthenticated guest visitors.
+- **Rule 35.2**: **Optional Authentication Middleware (`optionalAuth`)**: Endpoints serving public discovery must utilize `optionalAuth` rather than strict `requireAuth`. If a valid JWT is provided, the user context is populated; if no token or an invalid token is provided, the request must succeed in guest mode without returning `401 Unauthorized` or `403 Forbidden`.
+- **Rule 35.3**: **Graceful Gating at Commitment Point**: Guest users may explore AI symptom triage, view matching doctors, and browse bed counts freely; authentication gating is enforced only when the user commits to a booking, reservation, or saved item.
+
+## 36. Hospital Administrative Governance & RBAC Synchronization
+- **Rule 36.1**: **Multi-Store Role Synchronization**: Whenever an administrative role is provisioned (`hospital_admin`, `platform_admin`), updates must be applied synchronously across all identity layers: `public.profiles` (`role`), `auth.users` (`raw_user_meta_data->role`), and operational membership tables (`hospital_users`, `hospital_memberships`).
+- **Rule 36.2**: **Deterministic Facility Linkage**: Hospital admins must be explicitly linked to their verified `hospital_id` with `is_primary = true` and `status = 'active'`. Platform admins possess global administrative privileges over all facilities and audit queues.
+
+
