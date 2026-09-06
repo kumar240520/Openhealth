@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   MapPin, 
   ChevronDown, 
@@ -7,12 +8,12 @@ import {
   List, 
   Search, 
   Loader2, 
-  AlertCircle,
-  ChevronLeft,
-  ChevronRight,
-  Stethoscope,
-  X,
-  Sparkles
+  AlertCircle, 
+  ChevronLeft, 
+  ChevronRight, 
+  Stethoscope, 
+  X, 
+  Sparkles 
 } from 'lucide-react';
 import AppLayout from '../../components/layout/AppLayout';
 import DoctorCard from '../../components/marketplace/DoctorCard';
@@ -25,15 +26,33 @@ import { extractSearchTokens, matchesAnyKeyword } from '../../utils/searchMatche
 
 export default function DoctorMarketplace() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Primary filter states
-  const [selectedCity, setSelectedCity] = useState('Indore');
-  const [selectedSpecialty, setSelectedSpecialty] = useState('all');
+  const [selectedCity, setSelectedCity] = useState(searchParams.get('city') || 'Indore');
+  const [selectedSpecialty, setSelectedSpecialty] = useState(searchParams.get('specialty') || 'all');
   const [selectedExperience, setSelectedExperience] = useState('all');
   const [selectedAvailability, setSelectedAvailability] = useState('today');
   const [sortBy, setSortBy] = useState('relevance');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+
+  // Synchronize state when URL query params change (e.g. from Navbar Omni-Search)
+  useEffect(() => {
+    const q = searchParams.get('q');
+    const city = searchParams.get('city');
+    const specialty = searchParams.get('specialty');
+
+    if (q !== null && q !== undefined) setSearchQuery(q);
+    if (city && city !== 'All') {
+      const cleanCity = city.split(',')[0].trim();
+      setSelectedCity(cleanCity);
+    }
+    if (specialty && specialty !== 'all') {
+      setSelectedSpecialty(specialty);
+    }
+    setCurrentPage(1);
+  }, [searchParams]);
 
   // Dropdown menus open states
   const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
@@ -272,7 +291,7 @@ export default function DoctorMarketplace() {
       <div className="flex-1 overflow-y-auto bg-[#f8fafc] custom-scrollbar min-h-screen pb-16">
         
         {/* Main Content Container */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+        <div className="max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6 flex flex-col gap-6 min-w-0">
           
           {/* =================================================================== */}
           {/* 1. PAGE TITLE & TOTAL COUNT */}
@@ -284,6 +303,59 @@ export default function DoctorMarketplace() {
             <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
               {totalDoctors} doctors found
             </p>
+          </div>
+
+          {/* Real-time Responsive Search Bar */}
+          <div className="relative flex items-center">
+            <Search className="absolute left-4 w-4 h-4 text-slate-400 pointer-events-none" />
+            <input 
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Search doctors by name, specialty, clinical qualifications, or hospital..."
+              className="w-full pl-11 pr-24 py-3 rounded-2xl bg-white border border-slate-200 text-xs sm:text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 shadow-2xs transition-all"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  const newParams = new URLSearchParams(searchParams);
+                  newParams.delete('q');
+                  setSearchParams(newParams);
+                }}
+                className="absolute right-3 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 transition-colors cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* Quick Discovery Specialty Chips */}
+          <div className="flex items-center gap-2 overflow-x-auto touch-scroll-x scrollbar-none pb-1 custom-scrollbar select-none text-xs">
+            {specialties.map(s => {
+              const isActive = selectedSpecialty === s.value;
+              return (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => {
+                    setSelectedSpecialty(s.value);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-full font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    isActive 
+                      ? 'bg-blue-600 text-white shadow-xs shadow-blue-500/20' 
+                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
+                  }`}
+                >
+                  {s.value === 'all' ? '🩺 All Specialties' : s.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* =================================================================== */}
@@ -307,7 +379,7 @@ export default function DoctorMarketplace() {
                 </button>
 
                 {cityDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-1.5 w-44 bg-white rounded-2xl shadow-xl border border-slate-200/90 py-1.5 z-40 animate-fadeIn">
+                  <div className="absolute top-full left-0 mt-1.5 w-44 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-slate-200/90 py-1.5 z-40 animate-fadeIn">
                     {cities.map(c => (
                       <button
                         key={c}
@@ -343,7 +415,7 @@ export default function DoctorMarketplace() {
                 </button>
 
                 {specialtyDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-1.5 w-52 bg-white rounded-2xl shadow-xl border border-slate-200/90 py-1.5 z-40 max-h-60 overflow-y-auto custom-scrollbar animate-fadeIn">
+                  <div className="absolute top-full left-0 mt-1.5 w-52 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-slate-200/90 py-1.5 z-40 max-h-60 overflow-y-auto custom-scrollbar animate-fadeIn">
                     {specialties.map(s => (
                       <button
                         key={s.value}
@@ -379,7 +451,7 @@ export default function DoctorMarketplace() {
                 </button>
 
                 {experienceDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-1.5 w-44 bg-white rounded-2xl shadow-xl border border-slate-200/90 py-1.5 z-40 animate-fadeIn">
+                  <div className="absolute top-full left-0 mt-1.5 w-44 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-slate-200/90 py-1.5 z-40 animate-fadeIn">
                     {experienceOptions.map(e => (
                       <button
                         key={e.value}
@@ -415,7 +487,7 @@ export default function DoctorMarketplace() {
                 </button>
 
                 {availabilityDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-1.5 w-48 bg-white rounded-2xl shadow-xl border border-slate-200/90 py-1.5 z-40 animate-fadeIn">
+                  <div className="absolute top-full left-0 mt-1.5 w-48 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-slate-200/90 py-1.5 z-40 animate-fadeIn">
                     {availabilityOptions.map(a => (
                       <button
                         key={a.value}
@@ -468,7 +540,7 @@ export default function DoctorMarketplace() {
                 </button>
 
                 {sortDropdownOpen && (
-                  <div className="absolute top-full right-0 mt-1.5 w-52 bg-white rounded-2xl shadow-xl border border-slate-200/90 py-1.5 z-40 animate-fadeIn">
+                  <div className="absolute top-full right-0 mt-1.5 w-52 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-slate-200/90 py-1.5 z-40 animate-fadeIn">
                     {sortOptions.map(s => (
                       <button
                         key={s.value}

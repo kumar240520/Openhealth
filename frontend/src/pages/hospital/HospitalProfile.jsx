@@ -496,11 +496,11 @@ export default function HospitalProfile() {
               <div className="flex flex-col gap-3 mt-4 text-xs">
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400 font-bold uppercase text-[10px]">KYC Status</span>
-                  {profile?.kyc_status === 'verified' ? (
+                  {profile?.kyc_status === 'verified' || profile?.verification_status === 'verified' || profile?.kyc_status === 'approved' ? (
                     <span className="px-2.5 py-0.5 rounded-full font-black bg-emerald-50 text-emerald-700 text-xs border border-emerald-200">
                       ✓ Verified (NABH Gold)
                     </span>
-                  ) : profile?.kyc_status === 'submitted' ? (
+                  ) : profile?.kyc_status === 'submitted' || profile?.kyc_status === 'in_review' || profile?.verification_status === 'submitted' ? (
                     <span className="px-2.5 py-0.5 rounded-full font-black bg-amber-50 text-amber-700 text-xs border border-amber-200">
                       ⏳ Under Review
                     </span>
@@ -517,22 +517,22 @@ export default function HospitalProfile() {
 
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400 font-bold uppercase text-[10px]">License Number</span>
-                  <span className="font-bold text-slate-800 font-mono text-[11px]">
-                    {profile?.license_number || 'CEA/MP/IND/2024/8892'}
+                  <span className={`font-bold font-mono text-[11px] ${profile?.license_number ? 'text-slate-800' : 'text-amber-600'}`}>
+                    {profile?.license_number || 'Not Provided'}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400 font-bold uppercase text-[10px]">GST / Tax ID</span>
-                  <span className="font-bold text-slate-800 font-mono text-[11px]">
-                    {profile?.tax_id || '23AAAAA0000A1Z5'}
+                  <span className={`font-bold font-mono text-[11px] ${profile?.tax_id ? 'text-slate-800' : 'text-amber-600'}`}>
+                    {profile?.tax_id || 'Not Provided'}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400 font-bold uppercase text-[10px]">Authorized Signatory</span>
-                  <span className="font-bold text-slate-800">
-                    {profile?.signatory_name || 'Dr. Medical Superintendent'}
+                  <span className={`font-bold ${profile?.signatory_name ? 'text-slate-800' : 'text-amber-600'}`}>
+                    {profile?.signatory_name || 'Not Specified'}
                   </span>
                 </div>
 
@@ -543,13 +543,13 @@ export default function HospitalProfile() {
                       href={profile.kyc_document_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="font-bold text-blue-600 hover:underline flex items-center gap-1"
+                      className="font-bold text-emerald-600 hover:underline flex items-center gap-1"
                     >
                       <span>View Certificate</span>
                       <ArrowRight className="w-3 h-3" />
                     </a>
                   ) : (
-                    <span className="text-slate-400">Standard Filing</span>
+                    <span className="text-rose-500 font-bold text-[11px]">Not Uploaded</span>
                   )}
                 </div>
               </div>

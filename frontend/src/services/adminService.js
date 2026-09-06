@@ -194,10 +194,12 @@ class AdminService {
       body: JSON.stringify({ verification_status: status, verification_notes: notes })
     }, async () => {
       const user = (await supabase.auth.getUser())?.data?.user;
+      const kycStatus = status === 'verified' ? 'verified' : (status === 'rejected' ? 'rejected' : 'submitted');
       const { data, error } = await supabase
         .from('hospitals')
         .update({ 
           verification_status: status, 
+          kyc_status: kycStatus,
           verification_notes: notes,
           verified_by: user?.id || null,
           verified_at: status === 'verified' ? new Date().toISOString() : null,
@@ -231,6 +233,62 @@ class AdminService {
       if (error) throw error;
       await this.logAuditEvent('HOSPITAL_STATUS_TOGGLED', 'hospital', hospitalId, { is_active: isActive });
       return data;
+    });
+  }
+
+  async dispatchHospitalMessage(hospitalId, message) {
+    return this.fetchWithFallback(`/hospitals/${hospitalId}/dispatch`, {
+      method: 'POST',
+      body: JSON.stringify({ message })
+    }, async () => {
+      const cleanMsg = (message || '').trim();
+      if (!cleanMsg) throw new Error('Dispatch message cannot be empty');
+
+      // 1. Update hospital verification_notes
+      const { data: hosp } = await supabase
+        .from('hospitals')
+        .update({
+          verification_notes: cleanMsg,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', hospitalId)
+        .select('name')
+        .single();
+
+      // 2. Fetch hospital staff/admin users
+      const { data: members } = await supabase
+        .from('hospital_memberships')
+        .select('user_id')
+        .eq('hospital_id', hospitalId)
+        .eq('is_active', true);
+
+      const userIds = new Set((members || []).map(m => m.user_id));
+
+      if (userIds.size === 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id')
+          .or('role.eq.hospital_admin,role.eq.hospital_staff')
+          .limit(10);
+        (profs || []).forEach(p => userIds.add(p.id));
+      }
+
+      // 3. Insert notification records
+      if (userIds.size > 0) {
+        const notifs = Array.from(userIds).map(uid => ({
+          user_id: uid,
+          type: 'admin_dispatch',
+          title: `Official Admin Notice: ${hosp?.name || 'Hospital Node'}`,
+          message: cleanMsg,
+          entity_type: 'hospital',
+          entity_id: hospitalId,
+          read_at: null
+        }));
+        await supabase.from('notifications').insert(notifs);
+      }
+
+      await this.logAuditEvent('HOSPITAL_INFO_DISPATCHED', 'hospital', hospitalId, { message: cleanMsg });
+      return { success: true, hospitalId, dispatchedToUsers: userIds.size, message: cleanMsg };
     });
   }
 

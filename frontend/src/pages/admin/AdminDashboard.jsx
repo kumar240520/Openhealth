@@ -392,6 +392,18 @@ export default function AdminDashboard() {
           setSelectedHospital(null);
           await fetchMetrics(true);
         }}
+        onRequestInfo={async (id, message) => {
+          setModalActionLoading(true);
+          try {
+            await adminService.dispatchHospitalMessage(id, message);
+            setSelectedHospital(null);
+            await fetchMetrics(true);
+          } catch (e) {
+            console.error('Dispatch request error:', e);
+          } finally {
+            setModalActionLoading(false);
+          }
+        }}
         processing={modalActionLoading}
       />
 

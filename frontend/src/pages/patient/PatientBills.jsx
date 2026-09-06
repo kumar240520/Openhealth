@@ -339,7 +339,7 @@ export default function PatientBills() {
 
   return (
     <AppLayout>
-      <main className="max-w-[1360px] w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 flex flex-col gap-5 select-none">
+      <main className="max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-5 flex flex-col gap-5 select-none min-w-0">
 
         {/* =================================================================== */}
         {/* 1. TOP HEADER & PRIMARY ACTIONS                                     */}

@@ -57,7 +57,7 @@ async function resolvePatientProfile(userId) {
 /**
  * Retrieves ranked nearby emergency-capable hospitals with live telemetry.
  */
-async function getNearbyHospitals({ latitude = 22.7533, longitude = 75.8937, radiusM = 20000 }) {
+async function getNearbyHospitals({ latitude = 26.2183, longitude = 78.1828, radiusM = 35000 }) {
   const patientLat = parseFloat(latitude);
   const patientLng = parseFloat(longitude);
 
@@ -358,8 +358,8 @@ async function dispatchAmbulance({ userId, sessionId, hospitalId, ambulanceId, p
   }
 
   // Station ambulance at hospital if no dedicated mobile unit is stationed nearby
-  const hospLat = hospital.latitude ? parseFloat(hospital.latitude) : 22.7533;
-  const hospLng = hospital.longitude ? parseFloat(hospital.longitude) : 75.8937;
+  const hospLat = hospital.latitude ? parseFloat(hospital.latitude) : (pickupLat || 26.2183);
+  const hospLng = hospital.longitude ? parseFloat(hospital.longitude) : (pickupLng || 78.1828);
   const ambLat = selectedAmbulance && selectedAmbulance.latitude ? parseFloat(selectedAmbulance.latitude) : hospLat;
   const ambLng = selectedAmbulance && selectedAmbulance.longitude ? parseFloat(selectedAmbulance.longitude) : hospLng;
   const distanceM = calculateDistanceMeters(pickupLat, pickupLng, ambLat, ambLng);
@@ -568,8 +568,8 @@ async function getActiveSession(userId) {
 
   if (ambReq?.ambulances) {
     const amb = ambReq.ambulances;
-    const ambLat = amb.latitude ? parseFloat(amb.latitude) : 22.7580;
-    const ambLng = amb.longitude ? parseFloat(amb.longitude) : 75.8950;
+    const ambLat = amb.latitude ? parseFloat(amb.latitude) : 26.2190;
+    const ambLng = amb.longitude ? parseFloat(amb.longitude) : 78.1830;
     const ambDistM = calculateDistanceMeters(sessLat, sessLng, ambLat, ambLng);
     const ambDistKm = Math.max(0.2, Math.round((ambDistM / 1000) * 10) / 10);
     const ambEta = Math.max(3, Math.round(ambDistKm * 2.0 + 1));
@@ -577,10 +577,10 @@ async function getActiveSession(userId) {
     ambulanceDetails = {
       id: amb.id,
       providerName: amb.ambulance_providers?.name || 'Emergency Ambulance Service',
-      vehicleNumber: amb.vehicle_number || 'MP 09 AZ 1234',
+      vehicleNumber: amb.vehicle_number || 'MP 07 GA 1080',
       ambulanceType: amb.ambulance_type || 'ICU Ambulance',
-      driverName: amb.driver_name || 'Ramesh Y.',
-      driverPhone: amb.driver_phone || '+91-98260-12345',
+      driverName: amb.driver_name || 'Dharmendra Sharma',
+      driverPhone: amb.driver_phone || '+91-94251-10801',
       etaMinutes: ambReq.eta_minutes || ambEta,
       distanceKm: ambDistKm,
       currentLatitude: ambLat,

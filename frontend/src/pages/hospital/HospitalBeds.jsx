@@ -460,7 +460,7 @@ export default function HospitalBeds() {
         {/* =================================================================== */}
         {/* 3. DYNAMIC SUB-TABS */}
         {/* =================================================================== */}
-        <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto text-xs font-bold text-slate-500 pb-0.5">
+        <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto touch-scroll-x scrollbar-none text-xs font-bold text-slate-500 pb-0.5">
           <button
             type="button"
             onClick={() => setActiveTab('all')}
@@ -525,8 +525,8 @@ export default function HospitalBeds() {
               </div>
 
               {/* Beds Table */}
-              <div className="overflow-x-auto mt-3">
-                <table className="w-full text-xs text-left">
+              <div className="overflow-x-auto touch-scroll-x mt-3">
+                <table className="w-full min-w-[640px] text-xs text-left">
                   <thead>
                     <tr className="text-slate-400 font-bold border-b border-slate-100 uppercase text-[10px]">
                       <th className="py-2.5 px-2">Ward / Category</th>
@@ -785,7 +785,7 @@ export default function HospitalBeds() {
       {/* Edit Bed Counts Modal */}
       {selectedBedModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 flex flex-col gap-4">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-black text-base text-slate-900">Edit Bed Counts: {selectedBedModal.name}</h3>
@@ -896,7 +896,7 @@ export default function HospitalBeds() {
       {/* Add New Bed Category Modal */}
       {addBedModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-sm w-full p-6 flex flex-col gap-4">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-sm w-full max-h-[90vh] overflow-y-auto p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-black text-base text-slate-900">Add Bed Category</h3>
               <button 

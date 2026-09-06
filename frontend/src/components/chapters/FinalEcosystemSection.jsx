@@ -82,7 +82,7 @@ export default function FinalEcosystemSection({ onSelectChapter, onProtectedNavi
         <div className="absolute top-0 inset-x-0 h-20 sm:h-24 bg-gradient-to-b from-[#050814]/80 via-[#050814]/30 to-transparent pointer-events-none z-[2]" />
       </motion.div>
 
-      <div className="relative z-10 w-full max-w-7xl mx-auto flex-1 flex flex-col justify-between mt-2">
+      <div className="relative z-10 w-full max-w-[1600px] mx-auto flex-1 flex flex-col justify-between mt-2">
         
         {/* Top & Middle Section with Smooth Parallax Drift */}
         <motion.div 

@@ -7,11 +7,18 @@ export default function HospitalKycBanner({ onOpenKyc }) {
   const { activeHospital } = useHospital();
 
   // If already verified, vanish completely!
-  if (!activeHospital || activeHospital.kyc_status === 'verified') {
+  const isVerified = activeHospital?.kyc_status === 'verified' || 
+                     activeHospital?.kyc_status === 'approved' || 
+                     activeHospital?.verification_status === 'verified';
+
+  if (!activeHospital || isVerified) {
     return null;
   }
 
-  const isSubmitted = activeHospital.kyc_status === 'submitted';
+  const isSubmitted = activeHospital.kyc_status === 'submitted' || 
+                      activeHospital.kyc_status === 'in_review' || 
+                      activeHospital.verification_status === 'submitted' ||
+                      activeHospital.verification_status === 'pending';
 
   return (
     <motion.div

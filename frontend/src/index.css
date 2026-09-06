@@ -18,6 +18,7 @@ html, body {
     margin: 0;
     padding: 0;
     width: 100%;
+    max-width: 100vw;
     min-height: 100%;
     font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     overflow-x: clip;
@@ -25,6 +26,13 @@ html, body {
     -moz-osx-font-smoothing: grayscale;
     -webkit-overflow-scrolling: touch;
   }
+}
+
+/* Mobile-first touch scroll utility */
+.touch-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 /* Backdrop filtering repaints the pixels behind an element while scrolling.

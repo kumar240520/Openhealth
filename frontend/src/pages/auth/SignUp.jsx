@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useHospital } from '../../context/HospitalContext';
 import { supabase } from '../../lib/supabaseClient';
 import { getRoleDashboardPath } from '../../components/auth/ProtectedRoute';
 import SpecularButton from '../../components/ui/SpecularButton';
@@ -27,7 +28,9 @@ const accountTypes = [
 
 export default function SignUp({ onNavigate }) {
   const navigate = useNavigate ? useNavigate() : null;
-  const { signUpWithEmail, sendOtp, verifyOtp, checkEmailExists, checkPhoneExists, checkOrgNameConflict } = useAuth();
+  const { signUpWithEmail, sendOtp, verifyOtp, checkEmailExists, checkPhoneExists, checkOrgNameConflict, refreshProfile } = useAuth();
+  const hospitalContext = useHospital();
+  const refreshHospital = hospitalContext?.refreshHospital;
   const [step, setStep] = useState(1); // 1: Form details, 2: OTP Verification, 3: Success
   const [showPassword, setShowPassword] = useState(false);
   const [accountType, setAccountType] = useState('patient');
@@ -148,7 +151,7 @@ export default function SignUp({ onNavigate }) {
         const orgConflict = await checkOrgNameConflict(accountType, orgNameToCheck);
         if (orgConflict?.exists) {
           setLoading(false);
-          setError(`A ${orgConflict.conflict_type || 'healthcare organization'} with a similar name ("${orgConflict.conflict_name}") is already registered. Please enter a unique name.`);
+          setError(`A ${orgConflict.conflict_type || 'healthcare organization'} with the exact name ("${orgConflict.conflict_name}") is already registered. Please enter a unique name.`);
           return;
         }
       }
@@ -215,6 +218,12 @@ export default function SignUp({ onNavigate }) {
             console.warn('Immediate provision warning:', provErr);
           }
         }
+        try {
+          if (refreshProfile) await refreshProfile();
+          if (refreshHospital) await refreshHospital();
+        } catch (refErr) {
+          console.warn('Post-signup refresh warning:', refErr);
+        }
         setStep(3);
       } else {
         // Confirmation required -> Transition directly to Step 2 OTP Verification
@@ -256,7 +265,12 @@ export default function SignUp({ onNavigate }) {
         });
         setLoading(false);
         if (fbError) {
-          setError(verifyError.message || fbError.message || 'Invalid or expired OTP code. Please check your email or click Resend.');
+          const rawMsg = (verifyError?.message || fbError?.message || '').toLowerCase();
+          if (rawMsg.includes('confirming user') || rawMsg.includes('invalid') || rawMsg.includes('expired')) {
+            setError('Invalid or expired verification code. Please check your email or click "Resend Code".');
+          } else {
+            setError(verifyError?.message || fbError?.message || 'Invalid verification code. Please try again.');
+          }
           return;
         }
       } else {
@@ -277,6 +291,13 @@ export default function SignUp({ onNavigate }) {
         } catch (provErr) {
           console.warn('Post-verification provision warning:', provErr);
         }
+      }
+
+      try {
+        if (refreshProfile) await refreshProfile();
+        if (refreshHospital) await refreshHospital();
+      } catch (refErr) {
+        console.warn('Post-verification refresh warning:', refErr);
       }
 
       setStep(3);
@@ -314,14 +335,21 @@ export default function SignUp({ onNavigate }) {
     }
   };
 
-  const goToDashboard = () => {
-    const roleMapping = {
-      patient: 'patient',
-      hospital: 'hospital_admin',
-      provider: 'insurance_user',
-    };
-    const role = roleMapping[accountType] || 'patient';
-    const targetPath = role === 'patient' ? '/patient/onboarding' : getRoleDashboardPath(role);
+  const goToDashboard = async () => {
+    try {
+      if (refreshProfile) await refreshProfile();
+      if (refreshHospital) await refreshHospital();
+    } catch (refErr) {
+      console.warn('Pre-navigation refresh warning:', refErr);
+    }
+
+    const targetPath =
+      accountType === 'hospital'
+        ? '/hospital/onboarding'
+        : accountType === 'provider'
+        ? '/dashboard/provider'
+        : '/patient/onboarding';
+
     if (navigate) {
       navigate(targetPath);
     } else if (onNavigate) {
@@ -346,7 +374,7 @@ export default function SignUp({ onNavigate }) {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[#050814] flex items-center justify-start px-4 sm:px-8 md:px-14 lg:px-20 py-10 select-none">
+    <div className="relative min-h-screen w-full overflow-hidden bg-[#050814] flex items-center justify-center sm:justify-start px-4 sm:px-8 md:px-14 lg:px-20 py-10 select-none">
       {/* Background Image — Right side is 100% crystal clear */}
       <div className="absolute inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
         <img
@@ -508,6 +536,7 @@ export default function SignUp({ onNavigate }) {
                   <input
                     type="text"
                     name="hospitalName"
+                    required
                     value={formData.hospitalName}
                     onChange={handleInputChange}
                     placeholder="Hospital / Clinic Name"
@@ -521,9 +550,10 @@ export default function SignUp({ onNavigate }) {
                   <input
                     type="text"
                     name="providerName"
+                    required
                     value={formData.providerName}
                     onChange={handleInputChange}
-                    placeholder="Organization or Fleet Name"
+                    placeholder="Fleet or Organization Name"
                     className="w-full px-4 py-2.5 rounded-2xl input-focus-glow text-white placeholder-slate-400 text-xs font-medium outline-none"
                   />
                 </div>
@@ -616,7 +646,7 @@ export default function SignUp({ onNavigate }) {
             <form onSubmit={handleVerifyOtpSubmit} className="flex flex-col gap-4">
               {/* 6-Digit OTP Boxes */}
               <div>
-                <div className="flex items-center justify-between gap-2" onPaste={handleOtpPaste}>
+                <div className="flex items-center justify-between gap-1.5 sm:gap-2" onPaste={handleOtpPaste}>
                   {otp.map((digit, idx) => (
                     <input
                       key={idx}
@@ -626,7 +656,7 @@ export default function SignUp({ onNavigate }) {
                       value={digit}
                       onChange={(e) => handleOtpChange(idx, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                      className="w-11 h-12 text-center text-lg font-bold text-emerald-300 otp-input-glow rounded-xl outline-none shadow-inner"
+                      className="w-9 h-11 sm:w-11 sm:h-12 text-center text-base sm:text-lg font-bold text-emerald-300 otp-input-glow rounded-xl outline-none shadow-inner"
                     />
                   ))}
                 </div>

@@ -83,6 +83,19 @@ export default function AdminVerification() {
     }
   };
 
+  const handleRequestInfoHospital = async (hospitalId, message) => {
+    try {
+      setActionLoading(true);
+      await adminService.dispatchHospitalMessage(hospitalId, message);
+      setSelectedHospital(null);
+      await loadQueues(true);
+    } catch (e) {
+      console.error('Dispatch request error:', e);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleVerifyDoctor = async (doctorId) => {
     try {
       setActionLoading(true);
@@ -331,6 +344,7 @@ export default function AdminVerification() {
         hospital={selectedHospital}
         onApprove={handleApproveHospital}
         onReject={handleRejectHospital}
+        onRequestInfo={handleRequestInfoHospital}
         processing={actionLoading}
       />
 

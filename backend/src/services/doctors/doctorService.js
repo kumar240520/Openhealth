@@ -21,6 +21,9 @@ const doctorService = {
     limit = 20,
     offset = 0
   }) => {
+    const hasCityFilter = city && city.trim() && city.toLowerCase() !== 'all';
+    const hospSelect = hasCityFilter ? 'hospitals!inner' : 'hospitals';
+
     let q = supabaseAdmin
       .from('doctors')
       .select(`
@@ -46,7 +49,7 @@ const doctorService = {
         is_active,
         hospital_id,
         department_id,
-        hospitals (
+        ${hospSelect} (
           id,
           name,
           city,
@@ -63,6 +66,12 @@ const doctorService = {
         )
       `, { count: 'exact' })
       .eq('is_active', true);
+
+    // Filter by City at database level
+    if (hasCityFilter) {
+      const cleanCity = city.split(',')[0].trim();
+      q = q.ilike('hospitals.city', `%${cleanCity}%`);
+    }
 
     // Filter by Hospital
     if (hospitalId) {

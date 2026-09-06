@@ -119,7 +119,7 @@ export default function HospitalSettings() {
 
   return (
     <HospitalLayout>
-      <div className="space-y-6 max-w-5xl mx-auto pb-16 text-slate-800">
+      <div className="space-y-6 w-full max-w-[1720px] mx-auto pb-16 text-slate-800 min-w-0">
         
         {/* Toast */}
         <AnimatePresence>

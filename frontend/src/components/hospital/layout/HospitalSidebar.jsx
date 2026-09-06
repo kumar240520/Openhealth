@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -35,6 +35,20 @@ export default function HospitalSidebar({ isOpen, onClose, isHovered: controlled
     setInternalHover(val);
     if (onHoverChange) onHoverChange(val);
   };
+
+  const [isMobile, setIsMobile] = useState(() => 
+    typeof window !== 'undefined' ? window.innerWidth < 1024 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isExpanded = isHovered || (isOpen && isMobile);
 
   // Hospital Navigation matching Pages 1-10 in reference PDF + Appointments
   const primaryNav = [
@@ -90,7 +104,7 @@ export default function HospitalSidebar({ isOpen, onClose, isHovered: controlled
         onMouseLeave={() => setHover(false)}
         initial={false}
         animate={{
-          width: isHovered ? 260 : 72,
+          width: isExpanded ? 260 : 72,
         }}
         transition={{
           type: 'spring',
@@ -116,9 +130,9 @@ export default function HospitalSidebar({ isOpen, onClose, isHovered: controlled
               <Activity className="w-5 h-5 stroke-[2.5]" />
             </div>
 
-            {/* Brand Title & Sub-headlines (Reveals on Hover) */}
+            {/* Brand Title & Sub-headlines (Reveals on Hover / Mobile Expand) */}
             <AnimatePresence>
-              {isHovered && (
+              {isExpanded && (
                 <motion.div 
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -161,7 +175,7 @@ export default function HospitalSidebar({ isOpen, onClose, isHovered: controlled
           {/* PRIMARY NAVIGATION SECTION */}
           <div className="flex flex-col gap-1">
             <AnimatePresence>
-              {isHovered && (
+              {isExpanded && (
                 <motion.span 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -184,21 +198,21 @@ export default function HospitalSidebar({ isOpen, onClose, isHovered: controlled
                   onClick={() => {
                     if (window.innerWidth < 1024 && onClose) onClose();
                   }}
-                  title={!isHovered ? item.name : undefined}
+                  title={!isExpanded ? item.name : undefined}
                   className={`relative flex items-center h-11 rounded-xl transition-all ${
                     active
                       ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/25'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-semibold'
-                  } ${isHovered ? 'px-3 gap-3 justify-start' : 'justify-center w-full'}`}
+                  } ${isExpanded ? 'px-3 gap-3 justify-start' : 'justify-center w-full'}`}
                 >
                   {/* Icon Box */}
                   <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                     <Icon className={`w-5 h-5 stroke-[2] ${active ? 'text-white' : 'text-slate-500 group-hover:text-slate-900'}`} />
                   </div>
 
-                  {/* Label Text (Expands on Hover) */}
+                  {/* Label Text (Expands on Hover / Mobile Expand) */}
                   <AnimatePresence>
-                    {isHovered && (
+                    {isExpanded && (
                       <motion.span
                         initial={{ opacity: 0, x: -8 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -231,16 +245,16 @@ export default function HospitalSidebar({ isOpen, onClose, isHovered: controlled
                   key={item.name}
                   type="button"
                   onClick={handleLogout}
-                  title={!isHovered ? item.name : undefined}
+                  title={!isExpanded ? item.name : undefined}
                   className={`flex items-center h-10 rounded-xl transition-all text-rose-600 hover:bg-rose-50/80 font-semibold cursor-pointer ${
-                    isHovered ? 'px-3 gap-3 justify-start' : 'justify-center w-full'
+                    isExpanded ? 'px-3 gap-3 justify-start' : 'justify-center w-full'
                   }`}
                 >
                   <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                     <Icon className="w-5 h-5 text-rose-500 stroke-[2]" />
                   </div>
                   <AnimatePresence>
-                    {isHovered && (
+                    {isExpanded && (
                       <motion.span
                         initial={{ opacity: 0, x: -8 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -260,18 +274,18 @@ export default function HospitalSidebar({ isOpen, onClose, isHovered: controlled
               <NavLink
                 key={item.name}
                 to={item.path}
-                title={!isHovered ? item.name : undefined}
+                title={!isExpanded ? item.name : undefined}
                 className={`flex items-center h-10 rounded-xl transition-all ${
                   active
                     ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/25'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-semibold'
-                } ${isHovered ? 'px-3 gap-3 justify-start' : 'justify-center w-full'}`}
+                } ${isExpanded ? 'px-3 gap-3 justify-start' : 'justify-center w-full'}`}
               >
                 <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                   <Icon className={`w-5 h-5 stroke-[2] ${active ? 'text-white' : 'text-slate-500'}`} />
                 </div>
                 <AnimatePresence>
-                  {isHovered && (
+                  {isExpanded && (
                     <motion.span
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -287,9 +301,9 @@ export default function HospitalSidebar({ isOpen, onClose, isHovered: controlled
             );
           })}
 
-          {/* Footer Copyright revealed when hovered */}
+          {/* Footer Copyright revealed when expanded */}
           <AnimatePresence>
-            {isHovered && (
+            {isExpanded && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}

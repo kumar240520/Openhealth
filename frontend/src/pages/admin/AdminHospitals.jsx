@@ -99,6 +99,19 @@ export default function AdminHospitals() {
     }
   };
 
+  const handleRequestInfo = async (hospitalId, message) => {
+    try {
+      setActionLoading(true);
+      await adminService.dispatchHospitalMessage(hospitalId, message);
+      setSelectedHospital(null);
+      await loadHospitals(true);
+    } catch (e) {
+      console.error('Dispatch request error:', e);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const pendingCount = hospitals.filter(h => h.verification_status !== 'verified').length;
 
   return (
@@ -311,6 +324,7 @@ export default function AdminHospitals() {
         onApprove={handleApprove}
         onReject={handleReject}
         onToggleSuspend={handleToggleSuspend}
+        onRequestInfo={handleRequestInfo}
         processing={actionLoading}
       />
     </AdminLayout>

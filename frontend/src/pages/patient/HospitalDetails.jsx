@@ -340,12 +340,12 @@ export default function HospitalDetails() {
   return (
     <AppLayout>
       {/* SPLIT LAYOUT BODY: FIXED NON-SCROLLABLE LEFT & SCROLLABLE RIGHT */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0 lg:h-[calc(100vh-4rem)]">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden min-h-0 lg:h-[calc(100vh-4rem)]">
         
         {/* =================================================================== */}
         {/* LEFT COLUMN: 100% FIXED & NON-SCROLLABLE (MATCHES REFERENCE IMAGE)  */}
         {/* =================================================================== */}
-        <div className="w-full lg:w-[440px] xl:w-[470px] lg:h-full flex-shrink-0 bg-slate-50/70 border-r border-slate-200/90 p-4 sm:p-5 lg:p-6 overflow-y-auto lg:overflow-hidden flex flex-col justify-start gap-4">
+        <div className="w-full lg:w-[440px] xl:w-[470px] lg:h-full flex-shrink-0 bg-slate-50/70 border-r border-slate-200/90 p-4 sm:p-5 lg:p-6 lg:overflow-hidden flex flex-col justify-start gap-4">
           
           {/* A. Showcase Photo Gallery Card */}
           <div className="p-3 sm:p-3.5 rounded-3xl bg-white border border-slate-200/90 shadow-sm flex flex-col gap-2.5">

@@ -16,7 +16,8 @@ import {
   Sparkles,
   ExternalLink
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../context/AuthContext';
 import { useHospital } from '../../../context/HospitalContext';
 
@@ -28,12 +29,21 @@ export default function HospitalNavbar({ onToggleSidebar, isSidebarHovered = fal
   } = useHospital();
 
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
   const notifRef = useRef(null);
   const profileRef = useRef(null);
+
+  // Sync searchQuery when URL param changes
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q !== null) {
+      setSearchQuery(q);
+    }
+  }, [searchParams]);
 
   // Close dropdowns on click outside
   useEffect(() => {
@@ -45,9 +55,17 @@ export default function HospitalNavbar({ onToggleSidebar, isSidebarHovered = fal
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSearchSubmit = (e) => {
-    if (e.key === 'Enter' && searchQuery.trim()) {
+  const triggerSearch = () => {
+    if (searchQuery.trim()) {
       navigate(`/hospital/bookings?q=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      navigate('/hospital/bookings');
+    }
+  };
+
+  const handleSearchSubmit = (e) => {
+    if (e.key === 'Enter') {
+      triggerSearch();
     }
   };
 
@@ -60,12 +78,110 @@ export default function HospitalNavbar({ onToggleSidebar, isSidebarHovered = fal
     }
   };
 
-  const notificationsList = [
-    { id: 1, title: 'New ICU Bed Reservation', time: '10 mins ago', unread: true },
-    { id: 2, title: 'Ambulance Unit AMB-02 Incoming', time: '25 mins ago', unread: true },
-    { id: 3, title: 'Dr. Amit Patel marked Available', time: '1 hour ago', unread: false },
-    { id: 4, title: 'Monthly Transparency Score updated: 88/100', time: 'Yesterday', unread: false }
-  ];
+  const [notificationsList, setNotificationsList] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchLiveNotifications = async () => {
+    if (!user?.id) {
+      setNotificationsList([
+        { id: '1', title: 'New ICU Bed Reservation', message: 'Bed 204 allocated', time: '10 mins ago', unread: true },
+        { id: '2', title: 'Ambulance Unit AMB-02 Incoming', message: 'ETA 6 mins with critical patient', time: '25 mins ago', unread: true },
+        { id: '3', title: 'Dr. Amit Patel marked Available', message: 'OPD roster updated', time: '1 hour ago', unread: false }
+      ]);
+      setUnreadCount(2);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (!error && data && data.length > 0) {
+        const mapped = data.map(n => {
+          const isUnread = !n.read_at;
+          const diffMs = Date.now() - new Date(n.created_at).getTime();
+          const diffMins = Math.round(diffMs / 60000);
+          let timeStr = 'Just now';
+          if (diffMins > 60 * 24) timeStr = `${Math.floor(diffMins / 1440)}d ago`;
+          else if (diffMins > 60) timeStr = `${Math.floor(diffMins / 60)}h ago`;
+          else if (diffMins > 0) timeStr = `${diffMins}m ago`;
+
+          return {
+            id: n.id,
+            title: n.title || 'Platform Notification',
+            message: n.message,
+            time: timeStr,
+            unread: isUnread,
+            type: n.type
+          };
+        });
+        setNotificationsList(mapped);
+        setUnreadCount(mapped.filter(m => m.unread).length);
+      } else {
+        // Facility operational baseline
+        setNotificationsList([
+          { id: 'base-1', title: 'Hospital Node Connected', message: 'All EHR and telemetry services operating normally.', time: 'Just now', unread: false }
+        ]);
+        setUnreadCount(0);
+      }
+    } catch (e) {
+      console.warn('Hospital notifications error:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveNotifications();
+
+    if (!user?.id) return;
+    const channelName = `hospital-navbar-notifs-${user.id}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => {
+          fetchLiveNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+  const handleMarkAllRead = async () => {
+    if (!user?.id) return;
+    try {
+      await supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .is('read_at', null);
+
+      setNotificationsList(prev => prev.map(n => ({ ...n, unread: false })));
+      setUnreadCount(0);
+    } catch (e) {
+      console.error('Mark all read error:', e);
+    }
+  };
+
+  const handleMarkSingleRead = async (notifId) => {
+    if (!user?.id) return;
+    try {
+      await supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('id', notifId);
+
+      setNotificationsList(prev => prev.map(n => n.id === notifId ? { ...n, unread: false } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (e) {}
+  };
 
   return (
     <motion.header
@@ -80,7 +196,7 @@ export default function HospitalNavbar({ onToggleSidebar, isSidebarHovered = fal
       }}
       className="fixed top-0 right-0 h-16 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-xs flex items-center max-lg:!left-0"
     >
-      <div className="w-full h-full px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-2.5 sm:gap-4 relative">
+      <div className="w-full max-w-[1720px] mx-auto h-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 flex items-center justify-between gap-2.5 sm:gap-4 relative">
         
         {/* ===================================================================== */}
         {/* Left: Mobile Toggle & Context Breadcrumb */}
@@ -122,17 +238,26 @@ export default function HospitalNavbar({ onToggleSidebar, isSidebarHovered = fal
         {/* ===================================================================== */}
         <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl mx-auto min-w-0 z-10">
           <div className="relative w-full flex items-center shadow-xs rounded-2xl bg-white">
-            <div className="absolute left-3 text-slate-400 pointer-events-none">
-              <Search className="w-4 h-4" />
-            </div>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleSearchSubmit}
-              placeholder="Search patients, bookings, doctors, treatments..."
-              className="w-full pl-9 pr-4 py-2 rounded-2xl bg-slate-100/70 hover:bg-slate-100 focus:bg-white border border-slate-200 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
+              placeholder="Search by Booking ID (BK-...), Hospital (HSP-...), patient, doctor..."
+              className="w-full pl-4 pr-12 py-2.5 rounded-2xl bg-slate-100/70 hover:bg-slate-100 focus:bg-white border border-slate-200 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
             />
+
+            {/* Right Search Button (Matching Patient Panel AppNavbar) */}
+            <div className="absolute right-1.5 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={triggerSearch}
+                title="Search Bookings, Patients & Doctors"
+                className="p-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-all cursor-pointer hover:scale-105 active:scale-95 flex items-center justify-center"
+              >
+                <Search className="w-3.5 h-3.5 stroke-[2.5]" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -182,7 +307,11 @@ export default function HospitalNavbar({ onToggleSidebar, isSidebarHovered = fal
               className="relative p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
             >
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-black ring-2 ring-white">
+                  {unreadCount}
+                </span>
+              )}
             </button>
 
             <AnimatePresence>
@@ -192,25 +321,64 @@ export default function HospitalNavbar({ onToggleSidebar, isSidebarHovered = fal
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.98 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 p-3 z-50 flex flex-col gap-2"
+                  className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-88 max-w-[92vw] bg-white rounded-2xl shadow-xl border border-slate-200 p-3 z-50 flex flex-col gap-2"
                 >
                   <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                    <span className="text-xs font-black text-slate-900">Hospital Alerts</span>
-                    <span className="text-[10px] bg-rose-50 text-rose-600 font-extrabold px-1.5 py-0.5 rounded-md">
-                      2 New
-                    </span>
+                    <span className="text-xs font-black text-slate-900">Facility Notifications</span>
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 ? (
+                        <>
+                          <span className="text-[10px] bg-rose-50 text-rose-600 font-extrabold px-1.5 py-0.5 rounded-md">
+                            {unreadCount} New
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleMarkAllRead}
+                            className="text-[10px] text-blue-600 hover:underline font-bold cursor-pointer"
+                          >
+                            Mark all read
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          All caught up
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex flex-col gap-1.5 max-h-60 overflow-y-auto custom-scrollbar">
-                    {notificationsList.map((n) => (
-                      <div 
-                        key={n.id} 
-                        className={`p-2 rounded-xl text-xs flex flex-col gap-0.5 ${n.unread ? 'bg-blue-50/70 border border-blue-100 font-bold text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`}
-                      >
-                        <span>{n.title}</span>
-                        <span className="text-[10px] text-slate-400 font-medium">{n.time}</span>
-                      </div>
-                    ))}
+                  <div className="flex flex-col gap-1.5 max-h-68 overflow-y-auto custom-scrollbar">
+                    {notificationsList.map((n) => {
+                      const isAdminDispatch = n.type === 'admin_dispatch';
+                      return (
+                        <div 
+                          key={n.id} 
+                          onClick={() => n.unread && handleMarkSingleRead(n.id)}
+                          className={`p-2.5 rounded-xl text-xs flex flex-col gap-1 transition-all cursor-pointer ${
+                            isAdminDispatch 
+                              ? (n.unread ? 'bg-amber-50/90 border border-amber-200 font-bold text-amber-950 shadow-xs' : 'bg-amber-50/40 text-slate-700 hover:bg-amber-50/60')
+                              : (n.unread ? 'bg-blue-50/70 border border-blue-100 font-bold text-slate-900' : 'text-slate-600 hover:bg-slate-50')
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-bold flex items-center gap-1.5 truncate">
+                              {isAdminDispatch && (
+                                <span className="px-1.5 py-0.2 rounded bg-amber-200 text-amber-900 text-[9px] font-black uppercase tracking-wider shrink-0">
+                                  Admin Notice
+                                </span>
+                              )}
+                              <span className="truncate">{n.title}</span>
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium shrink-0">{n.time}</span>
+                          </div>
+                          {n.message && (
+                            <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed font-normal">
+                              {n.message}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </motion.div>
               )}
@@ -245,7 +413,7 @@ export default function HospitalNavbar({ onToggleSidebar, isSidebarHovered = fal
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.98 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 flex flex-col gap-1 text-xs"
+                  className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-56 max-w-[92vw] bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 flex flex-col gap-1 text-xs"
                 >
                   <div className="p-2 border-b border-slate-100">
                     <span className="font-extrabold text-slate-900 block truncate">{activeHospital?.name || 'Hospital Facility'}</span>

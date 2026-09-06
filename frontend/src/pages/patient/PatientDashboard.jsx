@@ -320,7 +320,7 @@ export default function PatientDashboard() {
   return (
     <AppLayout>
       {/* DASHBOARD BODY CONTENT */}
-      <main className="p-4 sm:p-6 lg:p-8 flex flex-col gap-6 max-w-7xl mx-auto w-full">
+      <main className="p-4 sm:p-6 lg:p-8 xl:px-10 2xl:px-12 flex flex-col gap-6 max-w-[1720px] mx-auto w-full min-w-0">
           
           {/* Greeting Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -670,7 +670,7 @@ export default function PatientDashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
             {/* 1. Searches Card */}
-            <div className="px-6 py-5 rounded-2xl bg-white border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-4 hover:shadow-md transition-shadow">
+            <div className="p-4 sm:p-5 sm:px-6 rounded-2xl bg-white border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-4 hover:shadow-md transition-shadow">
               <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-200/40 text-blue-600 flex items-center justify-center flex-shrink-0 shadow-inner">
                 <Search className="w-5 h-5 stroke-[2.5]" />
               </div>
@@ -685,7 +685,7 @@ export default function PatientDashboard() {
             </div>
 
             {/* 2. Comparisons Card */}
-            <div className="px-6 py-5 rounded-2xl bg-white border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-4 hover:shadow-md transition-shadow">
+            <div className="p-4 sm:p-5 sm:px-6 rounded-2xl bg-white border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-4 hover:shadow-md transition-shadow">
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-200/40 text-emerald-600 flex items-center justify-center flex-shrink-0 shadow-inner">
                 <Calendar className="w-5 h-5 stroke-[2.5]" />
               </div>
@@ -700,7 +700,7 @@ export default function PatientDashboard() {
             </div>
 
             {/* 3. Reservations Card */}
-            <div className="px-6 py-5 rounded-2xl bg-white border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-4 hover:shadow-md transition-shadow">
+            <div className="p-4 sm:p-5 sm:px-6 rounded-2xl bg-white border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-4 hover:shadow-md transition-shadow">
               <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-200/40 text-purple-600 flex items-center justify-center flex-shrink-0 shadow-inner">
                 <FileText className="w-5 h-5 stroke-[2.5]" />
               </div>
@@ -715,7 +715,7 @@ export default function PatientDashboard() {
             </div>
 
             {/* 4. Bill Savings Est Card */}
-            <div className="px-6 py-5 rounded-2xl bg-white border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-4 hover:shadow-md transition-shadow">
+            <div className="p-4 sm:p-5 sm:px-6 rounded-2xl bg-white border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-4 hover:shadow-md transition-shadow">
               <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-200/40 text-amber-600 flex items-center justify-center flex-shrink-0 shadow-inner">
                 <Receipt className="w-5 h-5 stroke-[2.5]" />
               </div>

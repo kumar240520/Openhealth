@@ -174,7 +174,7 @@ export default function HospitalOnboardingWizard() {
     'Cardiology'
   ]);
 
-  // Step 3: Regulatory KYC State (Skippable)
+  // Step 3: Regulatory KYC State (Mandatory)
   const [kycData, setKycData] = useState({
     license_number: '',
     tax_id: '',
@@ -182,7 +182,7 @@ export default function HospitalOnboardingWizard() {
     kyc_document_url: '',
     document_name: ''
   });
-  const [isKycSkipped, setIsKycSkipped] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
 
   // Sync draft data on mount
   useEffect(() => {
@@ -312,21 +312,74 @@ export default function HospitalOnboardingWizard() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Step 3: Final Onboarding Save (Skippable KYC)
-  const handleSaveOnboarding = async (skipKyc = false) => {
+  // Handle KYC Document Upload with resilient fallback
+  const handleKycFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingDoc(true);
+    setErrorMsg('');
+    try {
+      const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const targetId = activeHospitalId || activeHospital?.id || 'facility';
+      const storagePath = `${targetId}/${Date.now()}_${cleanName}`;
+
+      let finalUrl = '';
+      try {
+        const { data: uploadData, error: uploadErr } = await supabase.storage
+          .from('hospital-documents')
+          .upload(storagePath, file, { cacheControl: '3600', upsert: true });
+
+        if (!uploadErr && uploadData?.path) {
+          const { data: pubData } = supabase.storage
+            .from('hospital-documents')
+            .getPublicUrl(uploadData.path);
+          finalUrl = pubData?.publicUrl || uploadData.path;
+        }
+      } catch (storageErr) {
+        console.warn('Storage upload notice, falling back to data URI:', storageErr);
+      }
+
+      if (!finalUrl) {
+        // Safe base64 data URI fallback for guaranteed previewability
+        finalUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        });
+      }
+
+      setKycData(prev => ({
+        ...prev,
+        document_name: file.name,
+        kyc_document_url: finalUrl
+      }));
+
+      setValidationErrors(prev => {
+        const c = { ...prev };
+        delete c.kyc_document;
+        return c;
+      });
+    } catch (err) {
+      console.error('File upload error:', err);
+      setErrorMsg('Failed to process document. Please try a different PDF or image file.');
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
+  // Step 3: Final Onboarding Save (Strict Mandatory KYC)
+  const handleSaveOnboarding = async () => {
     setErrorMsg('');
     setValidationErrors({});
 
-    if (!skipKyc) {
-      const kycVal = HospitalOnboardingValidationService.validateKyc(kycData, false);
-      if (!kycVal.isValid) {
-        setValidationErrors(kycVal.errors);
-        setErrorMsg('Please provide regulatory license details or choose to skip for now.');
-        return;
-      }
+    const kycVal = HospitalOnboardingValidationService.validateKyc(kycData);
+    if (!kycVal.isValid) {
+      setValidationErrors(kycVal.errors);
+      setErrorMsg('Please provide your regulatory license number, GSTIN, authorized signatory, and upload your KYC certificate.');
+      return;
     }
 
-    setIsKycSkipped(skipKyc);
     setSubmitting(true);
 
     try {
@@ -395,11 +448,11 @@ export default function HospitalOnboardingWizard() {
         beds: formattedBeds,
         departments: formattedDepartments,
         kyc: {
-          license_number: skipKyc ? null : (kycData.license_number.trim() || null),
-          tax_id: skipKyc ? null : (kycData.tax_id.trim() || null),
-          signatory_name: skipKyc ? null : (kycData.signatory_name.trim() || null),
-          kyc_document_url: skipKyc ? null : (kycData.kyc_document_url || null),
-          is_skipped: skipKyc
+          license_number: kycData.license_number.trim(),
+          tax_id: kycData.tax_id.trim(),
+          signatory_name: kycData.signatory_name.trim(),
+          kyc_document_url: kycData.kyc_document_url,
+          is_skipped: false
         }
       };
 
@@ -432,7 +485,7 @@ export default function HospitalOnboardingWizard() {
       {/* 1. TOP WIZARD HEADER                                                      */}
       {/* ========================================================================= */}
       <header className="w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-8 py-3.5 shadow-2xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
           
           {/* Left: Brand Identity */}
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
@@ -454,8 +507,21 @@ export default function HospitalOnboardingWizard() {
             </div>
           </div>
 
-          {/* Center: Multi-Step Stepper */}
-          <div className="flex items-center gap-1.5 sm:gap-3">
+          {/* Mobile Stepper Tracker (< 640px) */}
+          <div className="flex sm:hidden flex-col items-center flex-1 min-w-0">
+            <span className="text-[11px] font-bold text-slate-800 truncate">
+              Step {currentStep}/4: {currentStep === 1 ? 'Facility Profile' : currentStep === 2 ? 'Bed & Clinical' : currentStep === 3 ? 'KYC' : 'Live'}
+            </span>
+            <div className="w-24 h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden border border-slate-200">
+              <div 
+                className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                style={{ width: `${(currentStep / 4) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Center: Multi-Step Stepper (>= 640px) */}
+          <div className="hidden sm:flex items-center gap-1.5 sm:gap-3">
             
             {/* Step 1 */}
             <div className="flex flex-col items-center">
@@ -553,7 +619,7 @@ export default function HospitalOnboardingWizard() {
       {/* ========================================================================= */}
       {/* 2. MAIN WIZARD CONTAINER (Left Brand Hero + Right Form)                    */}
       {/* ========================================================================= */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8 min-w-0">
         <div className="flex flex-col lg:flex-row gap-8 items-start relative">
           
           {/* Left Hero Card */}
@@ -562,13 +628,9 @@ export default function HospitalOnboardingWizard() {
               <span className="text-xs font-extrabold text-blue-600 tracking-wider uppercase block mb-1">
                 OpenHealth Infrastructure
               </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
-                {currentStep === 4 ? 'Facility Live & Ready.' : 'Setup Your Hospital Operations.'}
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
+                Operational Node Configuration
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mt-3">
-                Configure your facility details, real bed capacities, and specialty departments. New accounts start with 100% clean zero-occupancy telemetry.
-              </p>
-
               {/* Live Highlights */}
               <div className="mt-6 flex flex-col gap-3">
                 <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/80 border border-slate-200/80 shadow-2xs">
@@ -596,8 +658,8 @@ export default function HospitalOnboardingWizard() {
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-xs font-black text-slate-900 block">Skippable KYC Verification</span>
-                    <span className="text-[11px] font-medium text-slate-500">Start operations now, verify license later</span>
+                    <span className="text-xs font-black text-slate-900 block">Statutory KYC Verification</span>
+                    <span className="text-[11px] font-medium text-slate-500">Clinical establishment registration & compliance review</span>
                   </div>
                 </div>
               </div>
@@ -609,7 +671,7 @@ export default function HospitalOnboardingWizard() {
               <span className="text-blue-600 font-black">
                 {currentStep === 1 && 'Facility Details (Mandatory)'}
                 {currentStep === 2 && 'Bed & Departments (Mandatory)'}
-                {currentStep === 3 && 'Accreditation KYC (Skippable)'}
+                {currentStep === 3 && 'Accreditation & Regulatory KYC (Mandatory)'}
                 {currentStep === 4 && 'Complete'}
               </span>
             </div>
@@ -1128,7 +1190,7 @@ export default function HospitalOnboardingWizard() {
             )}
 
             {/* =============================================================== */}
-            {/* STEP 3: REGULATORY KYC & ACCREDITATION (SKIPPABLE)               */}
+            {/* STEP 3: REGULATORY KYC & ACCREDITATION (MANDATORY)               */}
             {/* =============================================================== */}
             {currentStep === 3 && (
               <motion.div 
@@ -1140,21 +1202,21 @@ export default function HospitalOnboardingWizard() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-black text-slate-900">Accreditation & Regulatory KYC</h3>
-                    <span className="text-[10px] font-black uppercase bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
-                      Optional / Skippable
+                    <span className="text-[10px] font-black uppercase bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3" /> Mandatory Verification
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
-                    Upload your clinical registration license to earn the OpenHealth Verified Shield. You can complete this now or skip and verify later from your dashboard.
+                    Provide statutory establishment registrations and upload your clinical license certificate for platform compliance verification.
                   </p>
                 </div>
 
-                {/* Skippable Guidance Callout */}
-                <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80 flex items-start gap-3">
-                  <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <div className="text-xs text-amber-900 leading-relaxed font-medium">
-                    <span className="font-bold">Need to access your operational dashboard immediately?</span>{' '}
-                    You can click <strong className="font-bold">"Skip KYC for now & verify later"</strong> at the bottom. Your hospital beds, intake roster, and OPD portal will activate immediately with clean zero-occupancy telemetry.
+                {/* Mandatory Guidance Callout */}
+                <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200 flex items-start gap-3">
+                  <ShieldCheck className="w-4.5 h-4.5 text-blue-600 shrink-0 mt-0.5" />
+                  <div className="text-xs text-blue-950 leading-relaxed font-medium">
+                    <span className="font-bold">Mandatory National Healthcare Node Verification:</span>{' '}
+                    Clinical Establishment registration, institutional GSTIN / Tax ID, authorized signatory details, and a verified document copy are required for compliance review by the Central Health Authority.
                   </div>
                 </div>
 
@@ -1163,7 +1225,7 @@ export default function HospitalOnboardingWizard() {
                   {/* License Number */}
                   <div className="sm:col-span-2">
                     <label className="text-xs font-bold text-slate-700 block mb-1">
-                      Clinical Establishment / State Health Authority License No.
+                      Clinical Establishment / State Health Authority License No. <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative">
                       <FileText className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -1171,79 +1233,148 @@ export default function HospitalOnboardingWizard() {
                         type="text"
                         placeholder="e.g. CEA/MP/IND/2024/9842"
                         value={kycData.license_number}
-                        onChange={(e) => setKycData(prev => ({ ...prev, license_number: e.target.value }))}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        onChange={(e) => {
+                          setKycData(prev => ({ ...prev, license_number: e.target.value }));
+                          if (validationErrors.license_number) {
+                            setValidationErrors(prev => ({ ...prev, license_number: null }));
+                          }
+                        }}
+                        className={`w-full pl-10 pr-4 py-2.5 rounded-xl border bg-slate-50/50 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 ${
+                          validationErrors.license_number ? 'border-rose-300 focus:ring-rose-500/20' : 'border-slate-200 focus:ring-blue-500/20'
+                        }`}
                       />
                     </div>
+                    {validationErrors.license_number && (
+                      <p className="text-[11px] text-rose-600 font-semibold mt-1">{validationErrors.license_number}</p>
+                    )}
                   </div>
 
                   {/* Institutional PAN / GSTIN */}
                   <div>
                     <label className="text-xs font-bold text-slate-700 block mb-1">
-                      Institutional Tax ID / PAN / GSTIN
+                      Institutional Tax ID / PAN / GSTIN <span className="text-rose-500">*</span>
                     </label>
                     <input 
                       type="text"
                       placeholder="e.g. AAACM1234F or 23AAACM1234F1Z5"
                       value={kycData.tax_id}
-                      onChange={(e) => setKycData(prev => ({ ...prev, tax_id: e.target.value.toUpperCase() }))}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      onChange={(e) => {
+                        setKycData(prev => ({ ...prev, tax_id: e.target.value.toUpperCase() }));
+                        if (validationErrors.tax_id) {
+                          setValidationErrors(prev => ({ ...prev, tax_id: null }));
+                        }
+                      }}
+                      className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 ${
+                        validationErrors.tax_id ? 'border-rose-300 focus:ring-rose-500/20' : 'border-slate-200 focus:ring-blue-500/20'
+                      }`}
                     />
+                    {validationErrors.tax_id && (
+                      <p className="text-[11px] text-rose-600 font-semibold mt-1">{validationErrors.tax_id}</p>
+                    )}
                   </div>
 
                   {/* Medical Superintendent / Signatory */}
                   <div>
                     <label className="text-xs font-bold text-slate-700 block mb-1">
-                      Medical Superintendent / Authorized Signatory
+                      Medical Superintendent / Authorized Signatory <span className="text-rose-500">*</span>
                     </label>
                     <input 
                       type="text"
                       placeholder="Dr. Full Name"
                       value={kycData.signatory_name}
-                      onChange={(e) => setKycData(prev => ({ ...prev, signatory_name: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      onChange={(e) => {
+                        setKycData(prev => ({ ...prev, signatory_name: e.target.value }));
+                        if (validationErrors.signatory_name) {
+                          setValidationErrors(prev => ({ ...prev, signatory_name: null }));
+                        }
+                      }}
+                      className={`w-full px-3.5 py-2.5 rounded-xl border bg-slate-50/50 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 ${
+                        validationErrors.signatory_name ? 'border-rose-300 focus:ring-rose-500/20' : 'border-slate-200 focus:ring-blue-500/20'
+                      }`}
                     />
+                    {validationErrors.signatory_name && (
+                      <p className="text-[11px] text-rose-600 font-semibold mt-1">{validationErrors.signatory_name}</p>
+                    )}
                   </div>
 
                   {/* Document Upload Area */}
                   <div className="sm:col-span-2">
                     <label className="text-xs font-bold text-slate-700 block mb-1">
-                      Registration Certificate / NABH Document (Optional)
+                      Registration Certificate / NABH Document <span className="text-rose-500">*</span>
                     </label>
-                    <div className="p-6 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center text-center">
-                      <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-2">
-                        <Upload className="w-5 h-5" />
+                    <div className={`p-6 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center text-center transition-all ${
+                      validationErrors.kyc_document 
+                        ? 'border-rose-300 bg-rose-50/30' 
+                        : kycData.kyc_document_url 
+                        ? 'border-emerald-300 bg-emerald-50/30'
+                        : 'border-slate-200 bg-slate-50/50'
+                    }`}>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+                        kycData.kyc_document_url ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
+                      }`}>
+                        {uploadingDoc ? (
+                          <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                        ) : kycData.kyc_document_url ? (
+                          <Check className="w-5 h-5 stroke-[3]" />
+                        ) : (
+                          <Upload className="w-5 h-5" />
+                        )}
                       </div>
                       <span className="text-xs font-bold text-slate-800">
-                        {kycData.document_name || 'Upload Certificate PDF or Scan (Max 5MB)'}
+                        {kycData.document_name || 'Upload Certificate PDF or Scan (Max 15MB)'}
                       </span>
                       <span className="text-[11px] text-slate-400 mt-0.5">
                         Supports PDF, PNG, JPG files
                       </span>
-                      <label className="mt-3 px-4 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-blue-600 hover:bg-slate-50 cursor-pointer">
-                        <span>Browse File</span>
-                        <input 
-                          type="file"
-                          accept=".pdf,.png,.jpg,.jpeg"
-                          className="sr-only"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              setKycData(prev => ({
-                                ...prev,
-                                document_name: file.name,
-                                kyc_document_url: 'uploaded_locally'
-                              }));
-                            }
-                          }}
-                        />
-                      </label>
+                      
+                      {kycData.kyc_document_url ? (
+                        <div className="mt-3 flex items-center gap-2">
+                          <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-1">
+                            <Check className="w-3.5 h-3.5" /> Document Ready
+                          </span>
+                          <label className="px-3 py-1 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer shadow-2xs">
+                            <span>Change File</span>
+                            <input 
+                              type="file"
+                              accept=".pdf,.png,.jpg,.jpeg"
+                              className="sr-only"
+                              disabled={uploadingDoc}
+                              onChange={handleKycFileUpload}
+                            />
+                          </label>
+                        </div>
+                      ) : (
+                        <label className="mt-3 px-4 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-blue-600 hover:bg-slate-50 cursor-pointer shadow-xs inline-flex items-center gap-1.5">
+                          {uploadingDoc ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Uploading Document...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>Browse & Attach Document</span>
+                            </>
+                          )}
+                          <input 
+                            type="file"
+                            accept=".pdf,.png,.jpg,.jpeg"
+                            className="sr-only"
+                            disabled={uploadingDoc}
+                            onChange={handleKycFileUpload}
+                          />
+                        </label>
+                      )}
+
+                      {validationErrors.kyc_document && (
+                        <p className="text-[11px] text-rose-600 font-bold mt-2.5">{validationErrors.kyc_document}</p>
+                      )}
                     </div>
                   </div>
 
                 </div>
 
-                {/* Dual Action Bar: Skip vs Submit */}
+                {/* Dual Action Bar: Back vs Submit */}
                 <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <button
                     type="button"
@@ -1255,32 +1386,23 @@ export default function HospitalOnboardingWizard() {
                   </button>
 
                   <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                    {/* Explicit "Skip KYC for now" button */}
                     <button
                       type="button"
-                      disabled={submitting}
-                      onClick={() => handleSaveOnboarding(true)}
-                      className="px-5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                      disabled={submitting || uploadingDoc}
+                      onClick={handleSaveOnboarding}
+                      className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition-all cursor-pointer w-full sm:w-auto disabled:opacity-50"
                     >
                       {submitting ? (
-                        <Loader2 className="w-4 h-4 animate-spin inline mr-1" />
-                      ) : null}
-                      <span>Skip KYC for now & verify later</span>
-                    </button>
-
-                    {/* Submit KYC button */}
-                    <button
-                      type="button"
-                      disabled={submitting}
-                      onClick={() => handleSaveOnboarding(false)}
-                      className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
-                    >
-                      {submitting ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Saving & Submitting...</span>
+                        </>
                       ) : (
-                        <ShieldCheck className="w-4 h-4" />
+                        <>
+                          <ShieldCheck className="w-4 h-4" />
+                          <span>Submit KYC & Complete Setup</span>
+                        </>
                       )}
-                      <span>Submit KYC & Complete Setup</span>
                     </button>
                   </div>
                 </div>
@@ -1295,21 +1417,21 @@ export default function HospitalOnboardingWizard() {
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="flex flex-col items-center text-center py-6 gap-6"
+                className="flex flex-col items-center text-center py-6 sm:py-8 space-y-6"
               >
-                <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shadow-md shadow-emerald-500/10">
-                  <CheckCheck className="w-8 h-8 stroke-[2.5]" />
+                <div className="w-16 h-16 rounded-full bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center text-emerald-600 shadow-sm animate-bounce">
+                  <Check className="w-8 h-8 stroke-[3]" />
                 </div>
 
-                <div>
-                  <span className="text-xs font-extrabold text-emerald-600 uppercase tracking-wider block mb-1">
-                    Onboarding Completed
+                <div className="max-w-md">
+                  <span className="text-[11px] font-black uppercase text-emerald-600 tracking-wider bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                    Registration Dossier Dispatched
                   </span>
-                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-                    {profileData.name} is Live!
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight mt-2">
+                    Verification Request Sent to Platform Admin
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mt-2">
-                    Your facility has been provisioned with zero initial occupancy. All wards and intake portals are now synchronized with live telemetry.
+                    Your facility registration, bed allocation, and regulatory KYC dossier for <strong className="text-slate-800">{profileData.name}</strong> have been submitted to the Central Platform Administration for compliance approval.
                   </p>
                 </div>
 
@@ -1320,22 +1442,54 @@ export default function HospitalOnboardingWizard() {
                     <span className="text-lg font-black text-slate-900">{totalBedsCount}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Occupied Beds</span>
-                    <span className="text-lg font-black text-emerald-600">0 Active</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Facility Status</span>
+                    <span className="text-xs font-extrabold text-amber-700 block mt-1">Pending Approval</span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">KYC Status</span>
-                    <span className="text-xs font-extrabold text-blue-700 block mt-1">
-                      {isKycSkipped ? 'Pending (Optional)' : 'Submitted'}
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">KYC Dossier</span>
+                    <span className="text-xs font-extrabold text-emerald-700 block mt-1">
+                      Submitted & In Review
                     </span>
                   </div>
                 </div>
 
-                {isKycSkipped && (
-                  <p className="text-[11px] text-slate-400 max-w-sm">
-                    💡 You skipped KYC for now. A verification banner will be available on your dashboard whenever you wish to upload your registration license.
+                {/* Submitted KYC Credentials Verification Card */}
+                <div className="max-w-lg w-full p-4 rounded-2xl bg-white border border-emerald-200 text-left space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <span>Verified KYC & Regulatory Submission</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                      Document Attached
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100 text-slate-600">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-bold uppercase">Clinical License No.</span>
+                      <span className="font-mono font-bold text-slate-900">{kycData.license_number}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-bold uppercase">GSTIN / Tax ID</span>
+                      <span className="font-mono font-bold text-slate-900">{kycData.tax_id}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-bold uppercase">Authorized Signatory</span>
+                      <span className="font-bold text-slate-900">{kycData.signatory_name}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-bold uppercase">Uploaded Certificate</span>
+                      <span className="font-medium text-emerald-700 truncate block">{kycData.document_name || 'Clinical_License.pdf'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 text-left text-xs text-amber-900 max-w-lg flex items-start gap-2.5">
+                  <Lock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <p className="leading-relaxed">
+                    <strong>Notice:</strong> Your hospital panel will display an approval lock until the Platform Administrator reviews and verifies your facility. Once approved, all controls will unlock automatically.
                   </p>
-                )}
+                </div>
 
                 {/* Launch Dashboard Button */}
                 <button
@@ -1343,7 +1497,7 @@ export default function HospitalOnboardingWizard() {
                   onClick={() => navigate('/hospital/dashboard', { replace: true })}
                   className="flex items-center gap-2 px-8 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-black shadow-lg shadow-blue-500/25 transition-all cursor-pointer hover:scale-[1.02]"
                 >
-                  <span>Enter Hospital Operations Dashboard</span>
+                  <span>Proceed to Hospital Dashboard</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
 

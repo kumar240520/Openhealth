@@ -100,7 +100,7 @@ export default function HospitalDashboard() {
         {/* =================================================================== */}
         {/* 2. TOP 5 KPI SUMMARY CARDS (Page 1 in PDF) */}
         {/* =================================================================== */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-5 gap-3.5 sm:gap-4">
           
           {/* Card 1: Available Beds */}
           <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex flex-col justify-between gap-3 hover:shadow-md transition-shadow">
@@ -188,10 +188,12 @@ export default function HospitalDashboard() {
               <div>
                 <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">Transparency Score</span>
                 <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-2xl font-black text-emerald-600">{data?.kpis?.transparencyScore?.score ?? 96}</span>
+                  <span className="text-2xl font-black text-emerald-600">
+                    {data?.kpis?.transparencyScore?.score ?? (activeHospital?.transparency_score ?? 75)}
+                  </span>
                   <span className="text-xs font-bold text-slate-400">/ 100</span>
                   <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded ml-1">
-                    {(data?.kpis?.transparencyScore?.score ?? 96) >= 90 ? 'Excellent' : 'Good'}
+                    {(data?.kpis?.transparencyScore?.score ?? (activeHospital?.transparency_score ?? 75)) >= 85 ? 'Excellent' : ((data?.kpis?.transparencyScore?.score ?? (activeHospital?.transparency_score ?? 75)) >= 65 ? 'Good' : 'Building')}
                   </span>
                 </div>
               </div>
@@ -231,8 +233,8 @@ export default function HospitalDashboard() {
               </div>
 
               {/* Table */}
-              <div className="overflow-x-auto mt-3">
-                <table className="w-full text-xs text-left">
+              <div className="overflow-x-auto touch-scroll-x mt-3">
+                <table className="w-full min-w-[420px] text-xs text-left">
                   <thead>
                     <tr className="text-slate-400 font-bold border-b border-slate-100 uppercase text-[10px]">
                       <th className="py-2.5 px-2">Bed Type</th>
@@ -300,8 +302,8 @@ export default function HospitalDashboard() {
               </div>
 
               {/* Table */}
-              <div className="overflow-x-auto mt-3">
-                <table className="w-full text-xs text-left">
+              <div className="overflow-x-auto touch-scroll-x mt-3">
+                <table className="w-full min-w-[580px] text-xs text-left">
                   <thead>
                     <tr className="text-slate-400 font-bold border-b border-slate-100 uppercase text-[10px]">
                       <th className="py-2.5 px-2">Booking ID</th>

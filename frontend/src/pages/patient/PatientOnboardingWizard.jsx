@@ -551,7 +551,7 @@ export default function PatientOnboardingWizard() {
       {/* 1. TOP NAVBAR (100% FIXED TO TOP) */}
       {/* ========================================================================= */}
       <header className="fixed top-0 inset-x-0 z-50 h-16 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 lg:px-12 flex items-center shadow-sm">
-        <div className="max-w-7xl w-full mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-[1600px] w-full mx-auto flex items-center justify-between gap-4">
           
           {/* Left: Brand Logo */}
           <div className="flex items-center gap-2.5 flex-shrink-0">
@@ -571,8 +571,21 @@ export default function PatientOnboardingWizard() {
             </div>
           </div>
 
-          {/* Center: 3-Step Horizontal Stepper with Clean Connected Lines */}
-          <div className="flex items-center justify-center flex-1 max-w-md mx-auto">
+          {/* Mobile Stepper Tracker (< 640px) */}
+          <div className="flex sm:hidden flex-col items-center flex-1 min-w-0">
+            <span className="text-[11px] font-bold text-slate-800 truncate">
+              Step {currentStep}/3: {currentStep === 1 ? 'Basic Details' : currentStep === 2 ? 'KYC Verification' : 'Finish'}
+            </span>
+            <div className="w-24 h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden border border-slate-200">
+              <div 
+                className="h-full bg-emerald-600 rounded-full transition-all duration-300"
+                style={{ width: `${(currentStep / 3) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Desktop 3-Step Horizontal Stepper (>= 640px) */}
+          <div className="hidden sm:flex items-center justify-center flex-1 max-w-md mx-auto">
             
             {/* Step 1 */}
             <div className="flex flex-col items-center">
@@ -650,14 +663,14 @@ export default function PatientOnboardingWizard() {
       {/* ========================================================================= */}
       {/* 2. MAIN WIZARD CONTAINER (Fixed Left Banner & Scrollable Form) */}
       {/* ========================================================================= */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-8 lg:px-10 lg:py-6">
+      <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 lg:p-8 min-w-0">
         
         <div className="flex flex-col lg:flex-row gap-8 w-full items-start relative">
           
           {/* ===================================================================== */}
           {/* LEFT BANNER CARD (100% FIXED ON DESKTOP - NEVER MOVES) */}
           {/* ===================================================================== */}
-          <div className="w-full lg:w-[380px] xl:w-[410px] lg:fixed lg:top-20 lg:bottom-6 p-8 rounded-3xl bg-gradient-to-b from-white via-white to-emerald-50/50 border border-slate-200/80 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between relative overflow-hidden min-h-[480px] lg:h-[calc(100vh-6.5rem)] lg:max-h-[640px] z-20">
+          <div className="w-full lg:w-[380px] xl:w-[410px] lg:fixed lg:top-20 lg:bottom-6 p-5 sm:p-8 rounded-3xl bg-gradient-to-b from-white via-white to-emerald-50/50 border border-slate-200/80 shadow-[0_4px_25px_rgba(0,0,0,0.03)] flex flex-col justify-between relative overflow-hidden min-h-0 lg:min-h-[480px] lg:h-[calc(100vh-6.5rem)] lg:max-h-[640px] z-20">
             
             {/* Background decorative circles */}
             <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-emerald-500/5 -mr-16 -mt-16 pointer-events-none" />

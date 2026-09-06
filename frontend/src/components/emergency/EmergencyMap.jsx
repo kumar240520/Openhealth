@@ -3,9 +3,9 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import emergencyService from '../../services/emergencyService';
 
-// Default Indore Coordinates
-const DEFAULT_PATIENT_COORDS = [22.7533, 75.8937]; // Vijay Nagar, Indore
-const DEFAULT_HOSPITAL_COORDS = [22.7610, 75.8970]; // Apollo Hospitals, Indore
+// Default Coordinates (Gwalior)
+const DEFAULT_PATIENT_COORDS = [26.2183, 78.1828]; // Gwalior Center
+const DEFAULT_HOSPITAL_COORDS = [26.2150, 78.1800]; // Nearby Gwalior Hospital
 
 export default function EmergencyMap({ 
   patientCoords = DEFAULT_PATIENT_COORDS, 

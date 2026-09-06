@@ -120,22 +120,25 @@ export class HospitalOnboardingValidationService {
   }
 
   /**
-   * Validate Step 3: Accreditation & Regulatory KYC (Skippable)
+   * Validate Step 3: Accreditation & Regulatory KYC (Mandatory)
    */
-  static validateKyc(kyc = {}, isSkipped = false) {
-    // If skipped by user, it's 100% valid!
-    if (isSkipped) {
-      return { isValid: true, errors: {} };
-    }
-
+  static validateKyc(kyc = {}) {
     const errors = {};
 
     if (!kyc.license_number || kyc.license_number.trim().length < 3) {
       errors.license_number = 'Clinical Establishment / Health Authority license number is required for verification.';
     }
 
+    if (!kyc.tax_id || kyc.tax_id.trim().length < 5) {
+      errors.tax_id = 'Valid GSTIN or Tax Identification Number (TIN/PAN) is required.';
+    }
+
     if (!kyc.signatory_name || kyc.signatory_name.trim().length < 3) {
       errors.signatory_name = 'Authorized Medical Superintendent / Signatory full name is required.';
+    }
+
+    if (!kyc.kyc_document_url && !kyc.document_name && !kyc.document_file) {
+      errors.kyc_document = 'Clinical Establishment License or Accreditation Certificate document upload is required.';
     }
 
     return {
@@ -147,10 +150,10 @@ export class HospitalOnboardingValidationService {
   /**
    * Complete All-Step Validation Service
    */
-  static validateAll({ profile, bedSetup, kyc, isKycSkipped = false }) {
+  static validateAll({ profile, bedSetup, kyc }) {
     const profileVal = this.validateFacilityProfile(profile);
     const bedVal = this.validateBedInventory(bedSetup);
-    const kycVal = this.validateKyc(kyc, isKycSkipped);
+    const kycVal = this.validateKyc(kyc);
 
     const allErrors = {
       ...profileVal.errors,

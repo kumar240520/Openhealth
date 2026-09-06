@@ -283,7 +283,7 @@ export default function Login({ onNavigate }) {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[#050814] flex items-center justify-end px-4 sm:px-8 md:px-14 lg:px-20 py-10 select-none">
+    <div className="relative min-h-screen w-full overflow-hidden bg-[#050814] flex items-center justify-center sm:justify-end px-4 sm:px-8 md:px-14 lg:px-20 py-10 select-none">
       {/* Background Image — Left side is 100% crystal clear (Doctor & Wheelchair patient) */}
       <div className="absolute inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
         <img
@@ -550,7 +550,7 @@ export default function Login({ onNavigate }) {
                     </div>
 
                     {/* 6-Digit OTP Boxes */}
-                    <div className="flex items-center justify-between gap-2 my-1" onPaste={handleOtpPaste}>
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2 my-1" onPaste={handleOtpPaste}>
                       {otp.map((digit, idx) => (
                         <input
                           key={idx}
@@ -560,7 +560,7 @@ export default function Login({ onNavigate }) {
                           value={digit}
                           onChange={(e) => handleOtpChange(idx, e.target.value)}
                           onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                          className="w-11 h-12 text-center text-lg font-bold text-emerald-300 otp-input-glow rounded-xl outline-none shadow-inner"
+                          className="w-9 h-11 sm:w-11 sm:h-12 text-center text-base sm:text-lg font-bold text-emerald-300 otp-input-glow rounded-xl outline-none shadow-inner"
                         />
                       ))}
                     </div>

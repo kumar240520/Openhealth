@@ -67,7 +67,8 @@ export default function HospitalDoctors() {
     consultation_fee: 800,
     opd_timings: '10:00 AM - 02:00 PM',
     image_url: '',
-    about: ''
+    about: '',
+    is_active: true
   });
 
   const loadDoctors = async () => {
@@ -179,6 +180,7 @@ export default function HospitalDoctors() {
         consultation_fee: Number(newDoctorForm.consultation_fee) || 500,
         opd_timings: newDoctorForm.opd_timings || '10:00 AM - 02:00 PM',
         available_today: true,
+        is_active: newDoctorForm.is_active !== false,
         image_url: newDoctorForm.image_url?.trim() || getRandomDoctorAvatar(newDoctorForm.name),
         about: newDoctorForm.about?.trim() || ''
       };
@@ -196,7 +198,8 @@ export default function HospitalDoctors() {
         consultation_fee: 800,
         opd_timings: '10:00 AM - 02:00 PM',
         image_url: '',
-        about: ''
+        about: '',
+        is_active: true
       });
     } catch (err) {
       console.error('Failed to add doctor:', err);
@@ -238,7 +241,7 @@ export default function HospitalDoctors() {
         image_url: editDoctorModal.image_url?.trim() || editDoctorModal.photo || editDoctorModal.image || getRandomDoctorAvatar(editDoctorModal.name),
         about: editDoctorModal.about || '',
         available_today: Boolean(editDoctorModal.available_today),
-        is_active: Boolean(editDoctorModal.is_active)
+        is_active: editDoctorModal.is_active !== false
       });
       setEditDoctorModal(null);
       await loadDoctors();
@@ -254,6 +257,30 @@ export default function HospitalDoctors() {
       await loadDoctors();
     } catch (err) {
       console.error('Failed to toggle duty:', err);
+    }
+  };
+
+  const handleToggleActive = async (doctorId, currentStatus) => {
+    const nextActive = !(currentStatus !== false);
+    try {
+      setData(prev => {
+        if (!prev?.doctors) return prev;
+        const updated = prev.doctors.map(d => d.id === doctorId ? { ...d, is_active: nextActive, status: nextActive ? 'Active' : 'Inactive' } : d);
+        const inactiveCount = updated.filter(d => d.is_active === false).length;
+        return {
+          ...prev,
+          doctors: updated,
+          kpis: {
+            ...prev.kpis,
+            inactive: inactiveCount
+          }
+        };
+      });
+      await hospitalPortalService.toggleDoctorActive(doctorId, nextActive);
+      await loadDoctors();
+    } catch (err) {
+      console.error('Failed to toggle doctor active status:', err);
+      await loadDoctors();
     }
   };
 
@@ -439,20 +466,21 @@ export default function HospitalDoctors() {
                       <th className="py-2.5 px-2">Qualification</th>
                       <th className="py-2.5 px-2 text-center">Fee</th>
                       <th className="py-2.5 px-2 text-center">Duty Status</th>
+                      <th className="py-2.5 px-2 text-center">Status</th>
                       <th className="py-2.5 px-2 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 font-semibold text-slate-700">
                     {loading && (
                       <tr>
-                        <td colSpan={7} className="py-8 text-center text-slate-400">
+                        <td colSpan={8} className="py-8 text-center text-slate-400">
                           Loading verified doctors from database...
                         </td>
                       </tr>
                     )}
                     {!loading && filteredDoctors.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="py-8 text-center text-slate-400">
+                        <td colSpan={8} className="py-8 text-center text-slate-400">
                           No doctors found matching criteria.
                         </td>
                       </tr>
@@ -486,6 +514,20 @@ export default function HospitalDoctors() {
                             }`}
                           >
                             {doc.available_today ? '● On Duty' : '○ On Leave'}
+                          </button>
+                        </td>
+                        <td className="py-2.5 px-2 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActive(doc.id, doc.is_active)}
+                            title="Click to toggle Active / Inactive doctor status"
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold cursor-pointer transition-all ${
+                              doc.is_active !== false
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
+                                : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
+                            }`}
+                          >
+                            {doc.is_active !== false ? '● Active' : '○ Inactive'}
                           </button>
                         </td>
                         <td className="py-2.5 px-2 text-right">
@@ -647,234 +689,249 @@ export default function HospitalDoctors() {
       {/* ADD NEW DOCTOR MODAL */}
       {/* =================================================================== */}
       {addDoctorModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-up my-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 p-5 pb-4 shrink-0 bg-white">
               <div>
                 <h3 className="font-black text-base text-slate-900">Add Clinical Specialist</h3>
                 <p className="text-[11px] text-slate-400 font-medium">Add doctor directly to the hospital's verified roster</p>
               </div>
-              <button type="button" onClick={() => setAddDoctorModalOpen(false)} className="p-1 rounded-xl text-slate-400 hover:bg-slate-100 cursor-pointer">
+              <button type="button" onClick={() => setAddDoctorModalOpen(false)} className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleAddDoctorSubmit} className="flex flex-col gap-3 text-xs">
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Doctor Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Dr. Rajesh Sharma"
-                  value={newDoctorForm.name}
-                  onChange={e => setNewDoctorForm({ ...newDoctorForm, name: e.target.value })}
-                  className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
+            <form onSubmit={handleAddDoctorSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="overflow-y-auto px-5 py-4 space-y-3.5 text-xs flex-1">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Department *</label>
-                  <select
-                    value={newDoctorForm.department_id}
-                    onChange={e => setNewDoctorForm({ ...newDoctorForm, department_id: e.target.value })}
-                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:border-blue-500 focus:bg-white outline-hidden"
-                    required
-                  >
-                    <option value="">Select Department</option>
-                    {(data?.departmentsCatalog || []).map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                    <option value="__custom__">✨ Custom (Add your own)</option>
-                  </select>
-
-                  {newDoctorForm.department_id === '__custom__' && (
-                    <div className="mt-2 animate-fadeIn">
-                      <label className="text-[9px] font-bold text-blue-600 uppercase">Enter Custom Department Name</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Pediatric Endocrinology"
-                        value={newDoctorForm.custom_department || ''}
-                        onChange={e => setNewDoctorForm({ ...newDoctorForm, custom_department: e.target.value })}
-                        className="w-full mt-1 p-2 rounded-xl border border-blue-300 bg-blue-50/40 font-semibold text-slate-900 text-xs focus:bg-white focus:border-blue-500 outline-none"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Qualification</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">Doctor Name *</label>
                   <input
                     type="text"
-                    value={newDoctorForm.qualification}
-                    onChange={e => setNewDoctorForm({ ...newDoctorForm, qualification: e.target.value })}
-                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Specialization / Clinical Role</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Senior Interventional Cardiologist"
-                  value={newDoctorForm.specialization}
-                  onChange={e => setNewDoctorForm({ ...newDoctorForm, specialization: e.target.value })}
-                  className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Experience (Years)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={newDoctorForm.experience_years}
-                    onChange={e => setNewDoctorForm({ ...newDoctorForm, experience_years: e.target.value })}
-                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">OPD Fee (₹)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={newDoctorForm.consultation_fee}
-                    onChange={e => setNewDoctorForm({ ...newDoctorForm, consultation_fee: e.target.value })}
+                    required
+                    placeholder="e.g. Dr. Rajesh Sharma"
+                    value={newDoctorForm.name}
+                    onChange={e => setNewDoctorForm({ ...newDoctorForm, name: e.target.value })}
                     className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">OPD Timings</label>
-                <input
-                  type="text"
-                  placeholder="Mon - Sat: 10:00 AM - 02:00 PM"
-                  value={newDoctorForm.opd_timings}
-                  onChange={e => setNewDoctorForm({ ...newDoctorForm, opd_timings: e.target.value })}
-                  className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
-                />
-              </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Department *</label>
+                    <select
+                      value={newDoctorForm.department_id}
+                      onChange={e => setNewDoctorForm({ ...newDoctorForm, department_id: e.target.value })}
+                      className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:border-blue-500 focus:bg-white outline-hidden"
+                      required
+                    >
+                      <option value="">Select Department</option>
+                      {(data?.departmentsCatalog || []).map(d => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                      <option value="__custom__">✨ Custom (Add your own)</option>
+                    </select>
 
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Registration / Medical License No.</label>
-                <input
-                  type="text"
-                  placeholder="e.g. MCI-2018-99421"
-                  value={newDoctorForm.registration_number || ''}
-                  onChange={e => setNewDoctorForm({ ...newDoctorForm, registration_number: e.target.value })}
-                  className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
-                />
-              </div>
-
-              {/* Profile Photo Upload & Curated Fallback Selector */}
-              <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                  Profile Photo
-                </label>
-                <div className="flex items-center gap-3">
-                  <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-xs shrink-0 flex items-center justify-center">
-                    {newDoctorForm.image_url ? (
-                      <img
-                        src={newDoctorForm.image_url}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.src = DEFAULT_DOCTOR_AVATARS[0];
-                        }}
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center text-slate-400">
-                        <User className="w-6 h-6" />
-                        <span className="text-[8px] font-bold mt-0.5">Placeholder</span>
+                    {newDoctorForm.department_id === '__custom__' && (
+                      <div className="mt-2 animate-fadeIn">
+                        <label className="text-[9px] font-bold text-blue-600 uppercase">Enter Custom Department Name</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Pediatric Endocrinology"
+                          value={newDoctorForm.custom_department || ''}
+                          onChange={e => setNewDoctorForm({ ...newDoctorForm, custom_department: e.target.value })}
+                          className="w-full mt-1 p-2 rounded-xl border border-blue-300 bg-blue-50/40 font-semibold text-slate-900 text-xs focus:bg-white focus:border-blue-500 outline-none"
+                        />
                       </div>
                     )}
                   </div>
 
-                  <div className="flex-1 space-y-1.5 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <label className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 transition-all">
-                        <Upload className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Upload Photo</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              handleImageFileSelect(file, (dataUrl) => {
-                                setNewDoctorForm(prev => ({ ...prev, image_url: dataUrl }));
-                              });
-                            }
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Qualification</label>
+                    <input
+                      type="text"
+                      value={newDoctorForm.qualification}
+                      onChange={e => setNewDoctorForm({ ...newDoctorForm, qualification: e.target.value })}
+                      className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">Specialization / Clinical Role</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Senior Interventional Cardiologist"
+                    value={newDoctorForm.specialization}
+                    onChange={e => setNewDoctorForm({ ...newDoctorForm, specialization: e.target.value })}
+                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Experience (Years)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={newDoctorForm.experience_years}
+                      onChange={e => setNewDoctorForm({ ...newDoctorForm, experience_years: e.target.value })}
+                      className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">OPD Fee (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={newDoctorForm.consultation_fee}
+                      onChange={e => setNewDoctorForm({ ...newDoctorForm, consultation_fee: e.target.value })}
+                      className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">OPD Timings</label>
+                  <input
+                    type="text"
+                    placeholder="Mon - Sat: 10:00 AM - 02:00 PM"
+                    value={newDoctorForm.opd_timings}
+                    onChange={e => setNewDoctorForm({ ...newDoctorForm, opd_timings: e.target.value })}
+                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">Registration / Medical License No.</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. MCI-2018-99421"
+                    value={newDoctorForm.registration_number || ''}
+                    onChange={e => setNewDoctorForm({ ...newDoctorForm, registration_number: e.target.value })}
+                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
+                  />
+                </div>
+
+                {/* Profile Photo Upload & Curated Fallback Selector */}
+                <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    Profile Photo
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-xs shrink-0 flex items-center justify-center">
+                      {newDoctorForm.image_url ? (
+                        <img
+                          src={newDoctorForm.image_url}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.src = DEFAULT_DOCTOR_AVATARS[0];
                           }}
                         />
-                      </label>
-                      {newDoctorForm.image_url && (
-                        <button
-                          type="button"
-                          onClick={() => setNewDoctorForm(prev => ({ ...prev, image_url: '' }))}
-                          className="px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-xl font-semibold transition-colors cursor-pointer"
-                        >
-                          Clear
-                        </button>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-slate-400">
+                          <User className="w-6 h-6" />
+                          <span className="text-[8px] font-bold mt-0.5">Placeholder</span>
+                        </div>
                       )}
                     </div>
-                    <p className="text-[10px] text-slate-400">
-                      Upload from computer, select an avatar below, or leave blank to auto-assign a professional portrait.
-                    </p>
+
+                    <div className="flex-1 space-y-1.5 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <label className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 transition-all">
+                          <Upload className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Upload Photo</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleImageFileSelect(file, (dataUrl) => {
+                                  setNewDoctorForm(prev => ({ ...prev, image_url: dataUrl }));
+                                });
+                              }
+                            }}
+                          />
+                        </label>
+                        {newDoctorForm.image_url && (
+                          <button
+                            type="button"
+                            onClick={() => setNewDoctorForm(prev => ({ ...prev, image_url: '' }))}
+                            className="px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-xl font-semibold transition-colors cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        Upload from computer, select an avatar below, or leave blank to auto-assign a professional portrait.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Quick Avatar Presets */}
+                  <div className="pt-2 border-t border-slate-200/60 flex items-center gap-2">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
+                      Quick Avatars:
+                    </span>
+                    <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+                      {DEFAULT_DOCTOR_AVATARS.map((av, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setNewDoctorForm(prev => ({ ...prev, image_url: av }))}
+                          className={`w-7 h-7 rounded-lg overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
+                            newDoctorForm.image_url === av ? 'border-blue-600 scale-105 shadow-xs' : 'border-transparent hover:border-slate-300 opacity-70 hover:opacity-100'
+                          }`}
+                          title={`Select Avatar ${idx + 1}`}
+                        >
+                          <img src={av} alt="Preset" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                {/* Quick Avatar Presets */}
-                <div className="pt-2 border-t border-slate-200/60 flex items-center gap-2">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
-                    Quick Avatars:
-                  </span>
-                  <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
-                    {DEFAULT_DOCTOR_AVATARS.map((av, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setNewDoctorForm(prev => ({ ...prev, image_url: av }))}
-                        className={`w-7 h-7 rounded-lg overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
-                          newDoctorForm.image_url === av ? 'border-blue-600 scale-105 shadow-xs' : 'border-transparent hover:border-slate-300 opacity-70 hover:opacity-100'
-                        }`}
-                        title={`Select Avatar ${idx + 1}`}
-                      >
-                        <img src={av} alt="Preset" className="w-full h-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">Doctor Biography / Clinical Summary</label>
+                  <textarea
+                    rows="2"
+                    placeholder="Specialist background, clinical sub-specialties, fellowship details..."
+                    value={newDoctorForm.about || ''}
+                    onChange={e => setNewDoctorForm({ ...newDoctorForm, about: e.target.value })}
+                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden resize-none"
+                  />
+                </div>
+
+                {/* Active Toggle Option */}
+                <div className="flex items-center gap-3 py-2 border-y border-slate-100 bg-slate-50/50 px-3 rounded-xl">
+                  <label className="flex items-center gap-2.5 font-bold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newDoctorForm.is_active !== false}
+                      onChange={e => setNewDoctorForm({ ...newDoctorForm, is_active: e.target.checked })}
+                      className="w-4 h-4 rounded text-blue-600 cursor-pointer"
+                    />
+                    <span>Active Doctor (Visible in Directory & Available for Appointments)</span>
+                  </label>
                 </div>
               </div>
 
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Doctor Biography / Clinical Summary</label>
-                <textarea
-                  rows="2"
-                  placeholder="Specialist background, clinical sub-specialties, fellowship details..."
-                  value={newDoctorForm.about || ''}
-                  onChange={e => setNewDoctorForm({ ...newDoctorForm, about: e.target.value })}
-                  className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden resize-none"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2 border-t border-slate-100">
+              <div className="flex gap-2 p-4 border-t border-slate-100 bg-slate-50/80 shrink-0">
                 <button
                   type="button"
                   onClick={() => setAddDoctorModalOpen(false)}
-                  className="w-1/2 py-2.5 rounded-xl bg-slate-100 font-bold text-slate-700 hover:bg-slate-200 cursor-pointer"
+                  className="w-1/2 py-2.5 rounded-xl bg-white border border-slate-200 font-bold text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="w-1/2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer"
+                  className="w-1/2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer shadow-xs transition-colors"
                 >
                   Add Specialist
                 </button>
@@ -888,242 +945,255 @@ export default function HospitalDoctors() {
       {/* EDIT DOCTOR MODAL */}
       {/* =================================================================== */}
       {editDoctorModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-up my-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 p-5 pb-4 shrink-0 bg-white">
               <div>
                 <h3 className="font-black text-base text-slate-900">Edit Doctor Profile</h3>
-                <p className="text-[11px] text-slate-400 font-medium">Update credentials, OPD fee, and schedule</p>
+                <p className="text-[11px] text-slate-400 font-medium">Update credentials, OPD fee, roster status, and schedule</p>
               </div>
-              <button type="button" onClick={() => setEditDoctorModal(null)} className="p-1 rounded-xl text-slate-400 hover:bg-slate-100 cursor-pointer">
+              <button type="button" onClick={() => setEditDoctorModal(null)} className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleEditDoctorSubmit} className="flex flex-col gap-3 text-xs">
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Doctor Name</label>
-                <input
-                  type="text"
-                  required
-                  value={editDoctorModal.name}
-                  onChange={e => setEditDoctorModal({ ...editDoctorModal, name: e.target.value })}
-                  className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-900 focus:border-blue-500 focus:bg-white outline-hidden"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
+            <form onSubmit={handleEditDoctorSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="overflow-y-auto px-5 py-4 space-y-3.5 text-xs flex-1">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Department</label>
-                  <select
-                    value={editDoctorModal.department_id || ''}
-                    onChange={e => setEditDoctorModal({ ...editDoctorModal, department_id: e.target.value })}
-                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:border-blue-500 focus:bg-white outline-hidden"
-                  >
-                    {(data?.departmentsCatalog || []).map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                    <option value="__custom__">✨ Custom (Add your own)</option>
-                  </select>
-
-                  {editDoctorModal.department_id === '__custom__' && (
-                    <div className="mt-2 animate-fadeIn">
-                      <label className="text-[9px] font-bold text-blue-600 uppercase">Enter Custom Department Name</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Pediatric Oncology"
-                        value={editDoctorModal.custom_department || ''}
-                        onChange={e => setEditDoctorModal({ ...editDoctorModal, custom_department: e.target.value })}
-                        className="w-full mt-1 p-2 rounded-xl border border-blue-300 bg-blue-50/40 font-semibold text-slate-900 text-xs focus:bg-white focus:border-blue-500 outline-none"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Qualification</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">Doctor Name</label>
                   <input
                     type="text"
-                    value={editDoctorModal.qualification || ''}
-                    onChange={e => setEditDoctorModal({ ...editDoctorModal, qualification: e.target.value })}
-                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Specialization</label>
-                <input
-                  type="text"
-                  value={editDoctorModal.specialization || ''}
-                  onChange={e => setEditDoctorModal({ ...editDoctorModal, specialization: e.target.value })}
-                  className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Experience (Years)</label>
-                  <input
-                    type="number"
-                    value={editDoctorModal.experience_years || 5}
-                    onChange={e => setEditDoctorModal({ ...editDoctorModal, experience_years: e.target.value })}
-                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
+                    required
+                    value={editDoctorModal.name}
+                    onChange={e => setEditDoctorModal({ ...editDoctorModal, name: e.target.value })}
+                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-900 focus:border-blue-500 focus:bg-white outline-hidden"
                   />
                 </div>
 
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">OPD Fee (₹)</label>
-                  <input
-                    type="number"
-                    value={editDoctorModal.fee || editDoctorModal.consultation_fee || 500}
-                    onChange={e => setEditDoctorModal({ ...editDoctorModal, consultation_fee: e.target.value, fee: e.target.value })}
-                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
-                  />
-                </div>
-              </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Department</label>
+                    <select
+                      value={editDoctorModal.department_id || ''}
+                      onChange={e => setEditDoctorModal({ ...editDoctorModal, department_id: e.target.value })}
+                      className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 font-semibold text-slate-900 bg-white focus:border-blue-500 focus:bg-white outline-hidden"
+                    >
+                      {(data?.departmentsCatalog || []).map(d => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                      <option value="__custom__">✨ Custom (Add your own)</option>
+                    </select>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Registration / License No.</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. MCI-2018-99421"
-                    value={editDoctorModal.registration_number || editDoctorModal.code || ''}
-                    onChange={e => setEditDoctorModal({ ...editDoctorModal, registration_number: e.target.value, code: e.target.value })}
-                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">OPD Timings</label>
-                  <input
-                    type="text"
-                    placeholder="10:00 AM - 02:00 PM"
-                    value={editDoctorModal.shift || editDoctorModal.opd_timings || ''}
-                    onChange={e => setEditDoctorModal({ ...editDoctorModal, shift: e.target.value, opd_timings: e.target.value })}
-                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
-                  />
-                </div>
-              </div>
-
-              {/* Profile Photo Upload & Curated Fallback Selector */}
-              <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                  Profile Photo
-                </label>
-                <div className="flex items-center gap-3">
-                  <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-xs shrink-0 flex items-center justify-center">
-                    {(editDoctorModal.image_url || editDoctorModal.photo || editDoctorModal.image) ? (
-                      <img
-                        src={editDoctorModal.image_url || editDoctorModal.photo || editDoctorModal.image}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.src = DEFAULT_DOCTOR_AVATARS[0];
-                        }}
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center text-slate-400">
-                        <User className="w-6 h-6" />
-                        <span className="text-[8px] font-bold mt-0.5">Placeholder</span>
+                    {editDoctorModal.department_id === '__custom__' && (
+                      <div className="mt-2 animate-fadeIn">
+                        <label className="text-[9px] font-bold text-blue-600 uppercase">Enter Custom Department Name</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Pediatric Oncology"
+                          value={editDoctorModal.custom_department || ''}
+                          onChange={e => setEditDoctorModal({ ...editDoctorModal, custom_department: e.target.value })}
+                          className="w-full mt-1 p-2 rounded-xl border border-blue-300 bg-blue-50/40 font-semibold text-slate-900 text-xs focus:bg-white focus:border-blue-500 outline-none"
+                        />
                       </div>
                     )}
                   </div>
 
-                  <div className="flex-1 space-y-1.5 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <label className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 transition-all">
-                        <Upload className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Upload New Photo</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              handleImageFileSelect(file, (dataUrl) => {
-                                setEditDoctorModal(prev => ({ ...prev, image_url: dataUrl, photo: dataUrl, image: dataUrl }));
-                              });
-                            }
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Qualification</label>
+                    <input
+                      type="text"
+                      value={editDoctorModal.qualification || ''}
+                      onChange={e => setEditDoctorModal({ ...editDoctorModal, qualification: e.target.value })}
+                      className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">Specialization</label>
+                  <input
+                    type="text"
+                    value={editDoctorModal.specialization || ''}
+                    onChange={e => setEditDoctorModal({ ...editDoctorModal, specialization: e.target.value })}
+                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Experience (Years)</label>
+                    <input
+                      type="number"
+                      value={editDoctorModal.experience_years || 5}
+                      onChange={e => setEditDoctorModal({ ...editDoctorModal, experience_years: e.target.value })}
+                      className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">OPD Fee (₹)</label>
+                    <input
+                      type="number"
+                      value={editDoctorModal.fee || editDoctorModal.consultation_fee || 500}
+                      onChange={e => setEditDoctorModal({ ...editDoctorModal, consultation_fee: e.target.value, fee: e.target.value })}
+                      className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Registration / License No.</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. MCI-2018-99421"
+                      value={editDoctorModal.registration_number || editDoctorModal.code || ''}
+                      onChange={e => setEditDoctorModal({ ...editDoctorModal, registration_number: e.target.value, code: e.target.value })}
+                      className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">OPD Timings</label>
+                    <input
+                      type="text"
+                      placeholder="10:00 AM - 02:00 PM"
+                      value={editDoctorModal.shift || editDoctorModal.opd_timings || ''}
+                      onChange={e => setEditDoctorModal({ ...editDoctorModal, shift: e.target.value, opd_timings: e.target.value })}
+                      className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                {/* Profile Photo Upload & Curated Fallback Selector */}
+                <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-2.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    Profile Photo
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-xs shrink-0 flex items-center justify-center">
+                      {(editDoctorModal.image_url || editDoctorModal.photo || editDoctorModal.image) ? (
+                        <img
+                          src={editDoctorModal.image_url || editDoctorModal.photo || editDoctorModal.image}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.src = DEFAULT_DOCTOR_AVATARS[0];
                           }}
                         />
-                      </label>
-                      {(editDoctorModal.image_url || editDoctorModal.photo || editDoctorModal.image) && (
-                        <button
-                          type="button"
-                          onClick={() => setEditDoctorModal(prev => ({ ...prev, image_url: '', photo: '', image: '' }))}
-                          className="px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-xl font-semibold transition-colors cursor-pointer"
-                        >
-                          Clear
-                        </button>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-slate-400">
+                          <User className="w-6 h-6" />
+                          <span className="text-[8px] font-bold mt-0.5">Placeholder</span>
+                        </div>
                       )}
                     </div>
-                    <p className="text-[10px] text-slate-400">
-                      Upload from computer, select an avatar below, or leave blank to auto-assign a professional portrait.
-                    </p>
+
+                    <div className="flex-1 space-y-1.5 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <label className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 transition-all">
+                          <Upload className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Upload New Photo</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleImageFileSelect(file, (dataUrl) => {
+                                  setEditDoctorModal(prev => ({ ...prev, image_url: dataUrl, photo: dataUrl, image: dataUrl }));
+                                });
+                              }
+                            }}
+                          />
+                        </label>
+                        {(editDoctorModal.image_url || editDoctorModal.photo || editDoctorModal.image) && (
+                          <button
+                            type="button"
+                            onClick={() => setEditDoctorModal(prev => ({ ...prev, image_url: '', photo: '', image: '' }))}
+                            className="px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-xl font-semibold transition-colors cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        Upload from computer, select an avatar below, or leave blank to auto-assign a professional portrait.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Quick Avatar Presets */}
+                  <div className="pt-2 border-t border-slate-200/60 flex items-center gap-2">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
+                      Quick Avatars:
+                    </span>
+                    <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+                      {DEFAULT_DOCTOR_AVATARS.map((av, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setEditDoctorModal(prev => ({ ...prev, image_url: av, photo: av, image: av }))}
+                          className={`w-7 h-7 rounded-lg overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
+                            (editDoctorModal.image_url === av || editDoctorModal.photo === av) ? 'border-blue-600 scale-105 shadow-xs' : 'border-transparent hover:border-slate-300 opacity-70 hover:opacity-100'
+                          }`}
+                          title={`Select Avatar ${idx + 1}`}
+                        >
+                          <img src={av} alt="Preset" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                {/* Quick Avatar Presets */}
-                <div className="pt-2 border-t border-slate-200/60 flex items-center gap-2">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
-                    Quick Avatars:
-                  </span>
-                  <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
-                    {DEFAULT_DOCTOR_AVATARS.map((av, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setEditDoctorModal(prev => ({ ...prev, image_url: av, photo: av, image: av }))}
-                        className={`w-7 h-7 rounded-lg overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
-                          (editDoctorModal.image_url === av || editDoctorModal.photo === av) ? 'border-blue-600 scale-105 shadow-xs' : 'border-transparent hover:border-slate-300 opacity-70 hover:opacity-100'
-                        }`}
-                        title={`Select Avatar ${idx + 1}`}
-                      >
-                        <img src={av} alt="Preset" className="w-full h-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase">Doctor Biography / Clinical Summary</label>
-                <textarea
-                  rows="2"
-                  placeholder="Specialist background, clinical sub-specialties, fellowship details..."
-                  value={editDoctorModal.about || ''}
-                  onChange={e => setEditDoctorModal({ ...editDoctorModal, about: e.target.value })}
-                  className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden resize-none"
-                />
-              </div>
-
-              <div className="flex items-center gap-4 py-2 border-y border-slate-100">
-                <label className="flex items-center gap-2 font-bold text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editDoctorModal.available_today !== false}
-                    onChange={e => setEditDoctorModal({ ...editDoctorModal, available_today: e.target.checked })}
-                    className="w-4 h-4 rounded text-blue-600 cursor-pointer"
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">Doctor Biography / Clinical Summary</label>
+                  <textarea
+                    rows="2"
+                    placeholder="Specialist background, clinical sub-specialties, fellowship details..."
+                    value={editDoctorModal.about || ''}
+                    onChange={e => setEditDoctorModal({ ...editDoctorModal, about: e.target.value })}
+                    className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden resize-none"
                   />
-                  <span>Available Today (On Duty)</span>
-                </label>
+                </div>
+
+                {/* Status Toggles: Active on Roster & Available Today */}
+                <div className="flex flex-wrap items-center gap-6 py-2.5 border-y border-slate-100 bg-slate-50/50 px-3 rounded-xl">
+                  <label className="flex items-center gap-2 font-bold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editDoctorModal.is_active !== false}
+                      onChange={e => setEditDoctorModal({ ...editDoctorModal, is_active: e.target.checked })}
+                      className="w-4 h-4 rounded text-blue-600 cursor-pointer"
+                    />
+                    <span>Active on Hospital Roster</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 font-bold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editDoctorModal.available_today !== false}
+                      onChange={e => setEditDoctorModal({ ...editDoctorModal, available_today: e.target.checked })}
+                      className="w-4 h-4 rounded text-blue-600 cursor-pointer"
+                    />
+                    <span>Available Today (On Duty)</span>
+                  </label>
+                </div>
               </div>
 
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 p-4 border-t border-slate-100 bg-slate-50/80 shrink-0">
                 <button
                   type="button"
                   onClick={() => setEditDoctorModal(null)}
-                  className="w-1/2 py-2.5 rounded-xl bg-slate-100 font-bold text-slate-700 hover:bg-slate-200 cursor-pointer"
+                  className="w-1/2 py-2.5 rounded-xl bg-white border border-slate-200 font-bold text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="w-1/2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer"
+                  className="w-1/2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer shadow-xs transition-colors"
                 >
                   Save Changes
                 </button>

@@ -38,7 +38,7 @@ export default function AICareSection({ onSelectChapter, onProtectedNavigate }) 
         <div className="absolute bottom-0 inset-x-0 h-20 sm:h-24 bg-gradient-to-t from-[#050814]/80 via-[#050814]/30 to-transparent pointer-events-none z-[2]" />
       </motion.div>
 
-      <div className="relative z-10 w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 items-center">
+      <div className="relative z-10 w-full max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 items-center">
         {/* Left Column Spacer (Framing the person on the left) */}
         <div className="hidden lg:block lg:col-span-5 xl:col-span-6" />
 

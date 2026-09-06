@@ -27,6 +27,7 @@ import AppLayout from '../../components/layout/AppLayout';
 import EmergencyMap from '../../components/emergency/EmergencyMap';
 import emergencyService from '../../services/emergencyService';
 import { useAuth } from '../../context/AuthContext';
+import { getCityCoordinates } from '../../services/geolocationService';
 
 // Reverse geocode GPS coordinates to actual street/city address using OSM Nominatim
 async function reverseGeocodeAddress(lat, lng) {
@@ -70,11 +71,14 @@ export default function PatientEmergency() {
   const [dispatching, setDispatching] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Location State (Prioritizes Live GPS if active, otherwise database profile city/address)
+  // Location State (Prioritizes Live GPS if active, otherwise profile city with Gwalior default)
+  const initialCity = profile?.patient_details?.city || profile?.city || userLocation?.cityName || 'gwalior';
+  const defaultCityCoords = getCityCoordinates(initialCity);
+
   const [patientLocation, setPatientLocation] = useState({
-    latitude: userLocation?.lat || 22.7533,
-    longitude: userLocation?.lng || 75.8937,
-    address: userLocation?.label || (userLocation?.cityName ? `${userLocation.cityName}, MP` : 'Indore, Madhya Pradesh'),
+    latitude: userLocation?.lat || defaultCityCoords.lat,
+    longitude: userLocation?.lng || defaultCityCoords.lng,
+    address: userLocation?.label || (userLocation?.cityName ? `${userLocation.cityName}, MP` : `${initialCity.charAt(0).toUpperCase() + initialCity.slice(1)}, Madhya Pradesh`),
     source: userLocation?.source || 'database'
   });
   const [updatingLocation, setUpdatingLocation] = useState(false);
@@ -85,14 +89,16 @@ export default function PatientEmergency() {
       setPatientLocation({
         latitude: userLocation.lat,
         longitude: userLocation.lng,
-        address: userLocation.label || (userLocation.cityName ? `${userLocation.cityName}, MP` : 'Indore, MP'),
+        address: userLocation.label || (userLocation.cityName ? `${userLocation.cityName}, MP` : 'Gwalior, MP'),
         source: userLocation.source || 'gps'
       });
-    } else if (profile?.city) {
+    } else if (profile?.city || profile?.patient_details?.city) {
+      const pCity = profile?.patient_details?.city || profile?.city;
+      const coords = getCityCoordinates(pCity);
       setPatientLocation({
-        latitude: 22.7533,
-        longitude: 75.8937,
-        address: profile.address ? `${profile.address}, ${profile.city}` : `${profile.city}, Madhya Pradesh`,
+        latitude: coords.lat,
+        longitude: coords.lng,
+        address: profile.address ? `${profile.address}, ${pCity}` : `${pCity}, Madhya Pradesh`,
         source: 'database'
       });
     }
@@ -113,9 +119,9 @@ export default function PatientEmergency() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
-  // 1. Initial Load: Check for active in-flight emergency session & fetch nearby hospitals
+  // 1. Fetch live ranked nearby emergency hospitals whenever coordinates resolve
   useEffect(() => {
-    const initializeEmergency = async () => {
+    const fetchHospitals = async () => {
       try {
         setLoading(true);
         setErrorMsg('');
@@ -133,7 +139,7 @@ export default function PatientEmergency() {
           }
         }
 
-        // 2. Otherwise, fetch live ranked nearby emergency hospitals
+        // 2. Fetch live ranked nearby emergency hospitals for patient's real GPS / city coordinates
         let rankedHospitals = await emergencyService.getNearbyHospitals({
           latitude: patientLocation.latitude,
           longitude: patientLocation.longitude,
@@ -141,7 +147,7 @@ export default function PatientEmergency() {
           radiusM: 30000
         });
 
-        // If strict radius finds no hospital, expand radius gracefully
+        // If strict 30km radius finds no hospital, expand radius gracefully
         if (!rankedHospitals || rankedHospitals.length === 0) {
           rankedHospitals = await emergencyService.getNearbyHospitals({
             latitude: patientLocation.latitude,
@@ -151,7 +157,7 @@ export default function PatientEmergency() {
           });
         }
 
-        setHospitals(rankedHospitals);
+        setHospitals(rankedHospitals || []);
         setActiveMode('DISCOVERY');
       } catch (err) {
         console.error('Emergency initialization notice:', err);
@@ -161,8 +167,10 @@ export default function PatientEmergency() {
       }
     };
 
-    initializeEmergency();
-  }, [user]);
+    if (patientLocation.latitude && patientLocation.longitude) {
+      fetchHospitals();
+    }
+  }, [user, patientLocation.latitude, patientLocation.longitude]);
 
   // 2. Real-time Map and ETA Simulation loop during Active Dispatch
   useEffect(() => {
@@ -367,7 +375,7 @@ export default function PatientEmergency() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+      <div className="max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6 flex flex-col gap-6 min-w-0">
 
         {/* ===================================================================== */}
         {/* 1. TOP HEADER BANNER                                                  */}
@@ -698,7 +706,7 @@ export default function PatientEmergency() {
                 <div className="w-full h-64 sm:h-72 rounded-2xl overflow-hidden shadow-inner">
                   <EmergencyMap
                     patientCoords={[patientLocation.latitude, patientLocation.longitude]}
-                    hospitalCoords={[selectedHospital.latitude || 22.7610, selectedHospital.longitude || 75.8970]}
+                    hospitalCoords={[selectedHospital.latitude || 26.2183, selectedHospital.longitude || 78.1828]}
                     hospitalName={selectedHospital.name || 'Selected Hospital'}
                     patientAddress={patientLocation.address}
                     initialDistanceKm={liveDistance}
@@ -733,8 +741,8 @@ export default function PatientEmergency() {
                             <Car className="w-3.5 h-3.5 stroke-[2.5]" />
                           )}
                         </div>
-                        <span className="text-[10px] font-black text-slate-800 mt-1 leading-tight">{step.label}</span>
-                        <span className="text-[9px] text-slate-400 font-medium">{step.time}</span>
+                        <span className="text-[8.5px] sm:text-[10px] font-black text-slate-800 mt-1 leading-tight text-center">{step.label}</span>
+                        <span className="text-[8px] sm:text-[9px] text-slate-400 font-medium">{step.time}</span>
                       </div>
                     ))}
                   </div>

@@ -31,7 +31,7 @@ export const CITY_COORDINATES = {
   'chandigarh': { lat: 30.7333, lng: 76.7794, state: 'Punjab' }
 };
 
-const DEFAULT_CITY = 'indore';
+const DEFAULT_CITY = 'gwalior';
 const STORAGE_KEY_LOCATION = 'openhealth_user_location';
 const STORAGE_KEY_GPS_STATUS = 'openhealth_gps_status';
 const EVENT_NAME = 'openhealth_location_changed';

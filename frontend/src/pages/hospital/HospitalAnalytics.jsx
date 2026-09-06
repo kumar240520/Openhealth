@@ -164,7 +164,14 @@ export default function HospitalAnalytics() {
                 onChange={(e) => setTimeRange(e.target.value)}
                 className="bg-transparent border-none focus:outline-none text-slate-800 font-semibold cursor-pointer"
               >
-                <option value="7d">09 May 2025 - 15 May 2025 (7 Days)</option>
+                <option value="7d">
+                  {(() => {
+                    const end = new Date();
+                    const start = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
+                    const opts = { day: '2-digit', month: 'short' };
+                    return `${start.toLocaleDateString('en-US', opts)} - ${end.toLocaleDateString('en-US', opts)} (7 Days)`;
+                  })()}
+                </option>
                 <option value="30d">Last 30 Days</option>
                 <option value="90d">Last 90 Days</option>
               </select>
@@ -294,9 +301,14 @@ export default function HospitalAnalytics() {
                 <h3 className="text-base font-bold text-slate-900">Booking Trend</h3>
                 <p className="text-xs text-slate-500">Daily confirmed and queued patient reservations</p>
               </div>
-              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
-                Peak: 84 (15 May)
-              </span>
+              {(() => {
+                const peak = (data?.bookingTrends || []).reduce((max, cur) => ((cur?.bookings || 0) > (max?.bookings || 0) ? cur : max), null);
+                return (
+                  <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+                    Peak: {peak && peak.bookings > 0 ? `${peak.bookings} (${peak.date})` : 'Live Activity'}
+                  </span>
+                );
+              })()}
             </div>
 
             <div className="h-64 w-full">

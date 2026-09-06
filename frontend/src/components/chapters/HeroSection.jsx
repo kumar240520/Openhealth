@@ -236,7 +236,7 @@ export default function HeroSection({ onSelectChapter, onOpenAuth, onProtectedNa
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.55 }}
-        className="relative z-10 w-full max-w-7xl mx-auto mt-4 mb-1 will-change-transform"
+        className="relative z-10 w-full max-w-[1600px] mx-auto mt-4 mb-1 will-change-transform"
       >
         <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-white drop-shadow mb-2 px-1">
           <Sparkles className="w-4 h-4 text-cyan-300" />

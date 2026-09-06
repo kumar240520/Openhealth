@@ -71,7 +71,7 @@ export default function AdmissionSection({ onSelectChapter, onProtectedNavigate 
       </motion.div>
 
       {/* Main Grid */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col justify-center">
+      <div className="relative z-10 w-full max-w-[1600px] mx-auto flex flex-col justify-center">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-end">
           
           {/* Left Column: Big Headline, Paragraph, and Full-Scale Smart Admission QR Card */}

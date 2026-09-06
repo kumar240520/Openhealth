@@ -20,17 +20,20 @@ import {
 import hospitalPortalService from '../../services/hospitalPortalService';
 import { useHospital } from '../../context/HospitalContext';
 
+import { supabase } from '../../lib/supabaseClient';
+
 export default function HospitalOnboardingModal({ 
   isOpen, 
   onClose, 
-  onCompleted,
+  onCompleted, 
   isKycOnly = false 
 }) {
   const { activeHospital, activeHospitalId, refreshHospital, provisionHospital } = useHospital();
 
   const [step, setStep] = useState(isKycOnly ? 'kyc' : 'profile'); // 'profile' | 'kyc'
   const [submitting, setSubmitting] = useState(false);
-  const [skipping, setSkipping] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [docName, setDocName] = useState('');
   const [error, setError] = useState(null);
 
   // Form State
@@ -84,81 +87,114 @@ export default function HospitalOnboardingModal({
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (error) setError(null);
   };
 
-  const handleSkipKyc = async () => {
+  const handleStep1Next = () => {
+    if (!formData.name?.trim()) {
+      setError('Hospital legal name is mandatory.');
+      return;
+    }
+    if (!formData.city?.trim()) {
+      setError('Hospital city location is mandatory.');
+      return;
+    }
+    setError(null);
+    setStep('kyc');
+  };
+
+  const handleKycFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingDoc(true);
+    setError(null);
     try {
-      setSkipping(true);
-      setError(null);
+      const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const targetId = activeHospitalId || activeHospital?.id || 'facility';
+      const storagePath = `${targetId}/${Date.now()}_${cleanName}`;
 
-      const payload = {
-        name: formData.name,
-        type: formData.type === '__custom__' ? formData.customType : formData.type,
-        email: formData.email,
-        phone: formData.phone,
-        website: formData.website,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        postal_code: formData.postal_code,
-        description: formData.description,
-        emergency_available: formData.emergency_available,
-        onboarding_completed: true,
-        kyc_status: activeHospital?.kyc_status === 'verified' ? 'verified' : 'pending'
-      };
+      let finalUrl = '';
+      try {
+        const { data: uploadData, error: uploadErr } = await supabase.storage
+          .from('hospital-documents')
+          .upload(storagePath, file, { cacheControl: '3600', upsert: true });
 
-      let targetId = activeHospitalId;
-      if (!targetId && provisionHospital) {
-        const { data: provHosp, error: provErr } = await provisionHospital({
-          name: formData.name || 'My Hospital',
-          city: formData.city || 'Indore',
-          phone: formData.phone || null,
-          type: formData.type === '__custom__' ? formData.customType : formData.type
+        if (!uploadErr && uploadData?.path) {
+          const { data: pubData } = supabase.storage
+            .from('hospital-documents')
+            .getPublicUrl(uploadData.path);
+          finalUrl = pubData?.publicUrl || uploadData.path;
+        }
+      } catch (storageErr) {
+        console.warn('Storage upload notice, falling back to data URI:', storageErr);
+      }
+
+      if (!finalUrl) {
+        finalUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(file);
         });
-        if (provErr) throw provErr;
-        targetId = provHosp?.id;
       }
 
-      if (targetId) {
-        await hospitalPortalService.updateProfile(targetId, payload);
-      }
-      refreshHospital();
-      if (onCompleted) onCompleted({ skippedKyc: true });
-      onClose();
+      setDocName(file.name);
+      setFormData(prev => ({
+        ...prev,
+        kyc_document_url: finalUrl
+      }));
     } catch (err) {
-      console.error('Error skipping KYC:', err);
-      setError(err.message || 'Failed to complete onboarding. Please try again.');
+      console.error('File upload error:', err);
+      setError('Failed to process document. Please try a different PDF or image.');
     } finally {
-      setSkipping(false);
+      setUploadingDoc(false);
     }
   };
 
   const handleSubmitComplete = async (e) => {
     if (e) e.preventDefault();
     try {
-      setSubmitting(true);
       setError(null);
 
+      // Mandatory KYC checks
+      if (!formData.license_number?.trim() || formData.license_number.trim().length < 3) {
+        setError('Clinical Establishment License Number is required (minimum 3 characters).');
+        return;
+      }
+      if (!formData.tax_id?.trim() || formData.tax_id.trim().length < 5) {
+        setError('Hospital GST / Tax Identification Number (TIN) is required (minimum 5 characters).');
+        return;
+      }
+      if (!formData.signatory_name?.trim() || formData.signatory_name.trim().length < 3) {
+        setError('Authorized Signatory / Medical Superintendent name is required.');
+        return;
+      }
+      if (!formData.kyc_document_url) {
+        setError('Please upload an official Clinical License or Accreditation document.');
+        return;
+      }
+
+      setSubmitting(true);
       const finalType = formData.type === '__custom__' ? formData.customType : formData.type;
       
       const payload = {
-        name: formData.name,
+        name: formData.name.trim(),
         type: finalType,
-        email: formData.email,
-        phone: formData.phone,
-        website: formData.website,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        postal_code: formData.postal_code,
-        description: formData.description,
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        website: formData.website.trim() || null,
+        address: formData.address.trim(),
+        city: formData.city.trim(),
+        state: formData.state.trim(),
+        postal_code: formData.postal_code.trim() || null,
+        description: formData.description.trim() || null,
         emergency_available: formData.emergency_available,
-        license_number: formData.license_number,
-        tax_id: formData.tax_id,
-        signatory_name: formData.signatory_name,
-        kyc_document_url: formData.kyc_document_url || 'https://openhealth.in/docs/verified-license.pdf',
+        license_number: formData.license_number.trim(),
+        tax_id: formData.tax_id.trim(),
+        signatory_name: formData.signatory_name.trim(),
+        kyc_document_url: formData.kyc_document_url,
         onboarding_completed: true,
-        kyc_status: 'verified' // Marked verified once submitted with valid details
+        kyc_status: 'in_review' // Live status sent for Platform Admin verification
       };
 
       let targetId = activeHospitalId;
@@ -176,8 +212,8 @@ export default function HospitalOnboardingModal({
       if (targetId) {
         await hospitalPortalService.updateProfile(targetId, payload);
       }
-      refreshHospital();
-      if (onCompleted) onCompleted({ verified: true });
+      await refreshHospital();
+      if (onCompleted) onCompleted({ verified: false, submitted: true });
       onClose();
     } catch (err) {
       console.error('Error submitting onboarding/KYC:', err);
@@ -253,7 +289,7 @@ export default function HospitalOnboardingModal({
             >
               <ShieldCheck className="w-4 h-4" />
               <span>2. KYC & Accreditation</span>
-              {activeHospital?.kyc_status !== 'verified' && (
+              {activeHospital?.kyc_status !== 'verified' && activeHospital?.verification_status !== 'verified' && (
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
               )}
             </button>
@@ -470,10 +506,11 @@ export default function HospitalOnboardingModal({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    GST / Hospital Tax Identification (TIN)
+                    GST / Hospital Tax Identification (TIN) <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
+                    required
                     value={formData.tax_id}
                     onChange={(e) => handleChange('tax_id', e.target.value)}
                     placeholder="e.g. 23AAAAA0000A1Z5"
@@ -485,10 +522,11 @@ export default function HospitalOnboardingModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Authorized Signatory / Medical Superintendent
+                    Authorized Signatory / Medical Superintendent <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
+                    required
                     value={formData.signatory_name}
                     onChange={(e) => handleChange('signatory_name', e.target.value)}
                     placeholder="e.g. Dr. Rajesh Sharma (MD, Medical Director)"
@@ -498,95 +536,108 @@ export default function HospitalOnboardingModal({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    License Certificate Document URL / Cloud PDF
+                    License Certificate Document URL (Auto-filled on upload)
                   </label>
                   <input
                     type="url"
                     value={formData.kyc_document_url}
                     onChange={(e) => handleChange('kyc_document_url', e.target.value)}
-                    placeholder="https://storage.openhealth.in/certs/license.pdf"
-                    className="w-full px-3.5 py-2.5 bg-white text-slate-900 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    placeholder="Auto-populated or enter https://..."
+                    className="w-full px-3.5 py-2.5 bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
               </div>
 
-              {/* Upload Certificate Dropzone Mock */}
+              {/* Upload Certificate Dropzone with Real File Input */}
               <div className="border-2 border-dashed border-slate-200 hover:border-blue-400 transition-colors rounded-2xl p-6 text-center bg-slate-50/50">
+                <input
+                  type="file"
+                  id="modalKycFileInput"
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  className="hidden"
+                  onChange={handleKycFileUpload}
+                  disabled={uploadingDoc}
+                />
                 <UploadCloud className="w-8 h-8 text-blue-600 mx-auto mb-2" />
                 <span className="text-xs font-bold text-slate-800 block">
-                  Drag and drop Clinical Establishment License (PDF or JPG)
+                  Upload Clinical Establishment License (Mandatory) <span className="text-rose-500">*</span>
                 </span>
-                <span className="text-[11px] text-slate-400 mt-0.5 block">
-                  Supports NABH Certificate, AERB License, or Fire Safety NOC (Max 15MB)
+                <span className="text-[11px] text-slate-500 mt-0.5 block">
+                  NABH Certificate, AERB License, or Fire Safety NOC (PDF, JPG, PNG up to 15MB)
                 </span>
-                <button
-                  type="button"
-                  onClick={() => handleChange('kyc_document_url', 'https://openhealth.in/docs/sample_nabh_license.pdf')}
-                  className="mt-3 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors shadow-2xs inline-flex items-center gap-1.5"
-                >
-                  <FileText className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Attach Verified Clinical Certificate</span>
-                </button>
+
+                {formData.kyc_document_url ? (
+                  <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Document Attached: {docName || 'Clinical_License.pdf'}</span>
+                    <label
+                      htmlFor="modalKycFileInput"
+                      className="ml-2 text-[11px] text-blue-600 underline cursor-pointer hover:text-blue-800"
+                    >
+                      Change
+                    </label>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="modalKycFileInput"
+                    className={`mt-3 px-4 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors shadow-xs inline-flex items-center gap-1.5 cursor-pointer ${
+                      uploadingDoc ? 'opacity-50 pointer-events-none' : ''
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5 text-blue-600" />
+                    <span>{uploadingDoc ? 'Uploading Document...' : 'Choose File to Upload'}</span>
+                  </label>
+                )}
               </div>
             </div>
           )}
         </div>
 
-        {/* Footer Actions */}
+        {/* Footer Actions - Strict KYC, No Skip */}
         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
           {step === 'profile' && !isKycOnly ? (
             <>
-              <button
-                type="button"
-                onClick={handleSkipKyc}
-                disabled={skipping || submitting}
-                className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
-              >
-                {skipping ? 'Saving...' : 'Skip for now'}
-              </button>
+              <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                <span>Facility profile information is verified for public listing</span>
+              </div>
 
               <button
                 type="button"
-                onClick={() => setStep('kyc')}
+                onClick={handleStep1Next}
                 className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5"
               >
-                <span>Continue to KYC</span>
+                <span>Continue to KYC Accreditation</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </>
           ) : (
             <>
-              <button
-                type="button"
-                onClick={handleSkipKyc}
-                disabled={skipping || submitting}
-                className="px-4 py-2 text-xs font-bold text-amber-700 hover:text-amber-800 transition-colors bg-amber-50 hover:bg-amber-100 rounded-xl border border-amber-200"
-              >
-                {skipping ? 'Skipping...' : 'Skip KYC for now'}
-              </button>
-
-              <div className="flex items-center gap-2">
-                {!isKycOnly && (
-                  <button
-                    type="button"
-                    onClick={() => setStep('profile')}
-                    disabled={submitting || skipping}
-                    className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-50 transition-colors"
-                  >
-                    Back
-                  </button>
-                )}
-
+              {!isKycOnly ? (
                 <button
                   type="button"
-                  onClick={handleSubmitComplete}
-                  disabled={submitting || skipping}
-                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5"
+                  onClick={() => {
+                    setError(null);
+                    setStep('profile');
+                  }}
+                  disabled={submitting || uploadingDoc}
+                  className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-100 transition-colors"
                 >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>{submitting ? 'Verifying...' : 'Submit & Complete KYC'}</span>
+                  Back to Profile
                 </button>
-              </div>
+              ) : (
+                <div />
+              )}
+
+              <button
+                type="button"
+                onClick={handleSubmitComplete}
+                disabled={submitting || uploadingDoc}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>{submitting ? 'Submitting for Verification...' : 'Submit & Complete KYC'}</span>
+              </button>
             </>
           )}
         </div>

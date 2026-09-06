@@ -130,12 +130,30 @@ export default function HospitalDepartments() {
     e.preventDefault();
     if (!editDeptModal) return;
     try {
-      await hospitalPortalService.updateDepartment(editDeptModal.id, {
-        name: editDeptModal.name,
-        description: editDeptModal.subtitle || editDeptModal.description,
+      const payload = {
+        name: editDeptModal.name?.trim(),
+        description: editDeptModal.description?.trim() || editDeptModal.subtitle?.trim() || 'Clinical Specialty Department',
         emergency_available: Boolean(editDeptModal.emergency_available),
-        is_active: Boolean(editDeptModal.is_active)
+        is_active: editDeptModal.is_active !== false
+      };
+
+      await hospitalPortalService.updateDepartment(editDeptModal.id, payload);
+
+      // Optimistic UI update
+      setData(prev => {
+        if (!prev?.departments) return prev;
+        return {
+          ...prev,
+          departments: prev.departments.map(d => d.id === editDeptModal.id ? {
+            ...d,
+            ...payload,
+            subtitle: payload.description,
+            status: payload.is_active ? 'Active' : 'Inactive',
+            type: payload.emergency_available ? 'Critical Care' : 'Clinical Specialty'
+          } : d)
+        };
       });
+
       setEditDeptModal(null);
       await loadDepartments();
     } catch (err) {
@@ -605,8 +623,8 @@ export default function HospitalDepartments() {
                 <label className="text-[10px] font-bold text-slate-400 uppercase">Description</label>
                 <input
                   type="text"
-                  value={editDeptModal.subtitle || editDeptModal.description || ''}
-                  onChange={e => setEditDeptModal({ ...editDeptModal, subtitle: e.target.value, description: e.target.value })}
+                  value={editDeptModal.description ?? editDeptModal.subtitle ?? ''}
+                  onChange={e => setEditDeptModal({ ...editDeptModal, description: e.target.value, subtitle: e.target.value })}
                   className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:bg-white outline-hidden"
                 />
               </div>

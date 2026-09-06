@@ -14,12 +14,16 @@ export function getRoleDashboardPath(role, profile, activeHospital) {
       if (profile && profile.onboarding_completed === false) {
         return '/hospital/onboarding';
       }
-      return '/dashboard/hospital';
+      if (profile && profile.onboarding_completed === true && activeHospital && activeHospital.onboarding_completed === true) {
+        return '/hospital/dashboard';
+      }
+      // If onboarding status is not explicitly verified completed, default to hospital onboarding
+      return '/hospital/onboarding';
     case 'insurance_user':
     case 'ambulance_driver':
       return '/dashboard/provider';
     case 'platform_admin':
-      return '/dashboard/admin';
+      return '/admin/dashboard';
     case 'patient':
     default:
       if (profile && profile.onboarding_completed === false) {
@@ -56,7 +60,27 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  const userRole = profile?.role || user?.user_metadata?.role || 'patient';
+  const metadataRole = user?.user_metadata?.role;
+  const profileRole = profile?.role;
+
+  // Hospital role takes precedence if either profile or user metadata indicates hospital affiliation
+  const isHospitalRole = profileRole === 'hospital_admin' || 
+                         profileRole === 'hospital_staff' || 
+                         metadataRole === 'hospital_admin' || 
+                         metadataRole === 'hospital_staff';
+
+  const isPlatformAdmin = profileRole === 'platform_admin' || metadataRole === 'platform_admin';
+  const isProvider = profileRole === 'insurance_user' || metadataRole === 'insurance_user' || 
+                     profileRole === 'ambulance_driver' || metadataRole === 'ambulance_driver';
+
+  const userRole = isHospitalRole 
+    ? (profileRole === 'hospital_staff' || metadataRole === 'hospital_staff' ? 'hospital_staff' : 'hospital_admin')
+    : isPlatformAdmin 
+    ? 'platform_admin'
+    : isProvider 
+    ? (profileRole || metadataRole)
+    : (profileRole || metadataRole || 'patient');
+
   const isHospitalUser = userRole === 'hospital_admin' || userRole === 'hospital_staff';
 
   // If route has specific allowed roles and current user is not authorized

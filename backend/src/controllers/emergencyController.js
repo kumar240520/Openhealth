@@ -12,9 +12,9 @@ class EmergencyController {
     try {
       const { latitude, longitude, radiusM, address } = req.query;
       const hospitals = await emergencyService.getNearbyHospitals({
-        latitude: latitude || 22.7533,
-        longitude: longitude || 75.8937,
-        radiusM: radiusM ? parseInt(radiusM, 10) : 25000
+        latitude: latitude || 26.2183,
+        longitude: longitude || 78.1828,
+        radiusM: radiusM ? parseInt(radiusM, 10) : 35000
       });
 
       return res.status(200).json({
@@ -23,9 +23,9 @@ class EmergencyController {
           hospitals,
           total: hospitals.length,
           searchOrigin: {
-            latitude: parseFloat(latitude || 22.7533),
-            longitude: parseFloat(longitude || 75.8937),
-            address: address || 'Search Location'
+            latitude: parseFloat(latitude || 26.2183),
+            longitude: parseFloat(longitude || 78.1828),
+            address: address || 'Gwalior, Madhya Pradesh'
           }
         }
       });

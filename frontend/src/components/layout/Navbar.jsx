@@ -50,7 +50,7 @@ export default function Navbar({ activeChapter, onSelectChapter, onOpenAuth, onP
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 py-3.5 sm:py-5 px-4 sm:px-8 lg:px-12 pointer-events-none select-none">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <div className="max-w-[1600px] mx-auto flex items-center justify-between">
         
         {/* Left: Solid High-Contrast Brand Logo */}
         <motion.div

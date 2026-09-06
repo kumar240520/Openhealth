@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ClipboardList, 
@@ -20,15 +21,15 @@ import {
   RefreshCw, 
   Printer, 
   FileText, 
-  ChevronRight,
-  ShieldCheck,
-  Stethoscope,
-  ChevronDown,
-  QrCode,
-  HeartPulse,
-  LogOut,
-  Sparkles,
-  ArrowUpRight
+  ChevronRight, 
+  ShieldCheck, 
+  Stethoscope, 
+  ChevronDown, 
+  QrCode, 
+  HeartPulse, 
+  LogOut, 
+  Sparkles, 
+  ArrowUpRight 
 } from 'lucide-react';
 import HospitalLayout from '../../components/hospital/layout/HospitalLayout';
 import { useHospital } from '../../context/HospitalContext';
@@ -38,6 +39,7 @@ import { supabase } from '../../lib/supabaseClient';
 
 export default function HospitalBookings() {
   const { activeHospitalId, activeHospital } = useHospital();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Primary view: 'reservations' (incoming holds & bookings) vs 'admissions' (admitted inpatients)
   const [viewMode, setViewMode] = useState('reservations');
@@ -46,11 +48,34 @@ export default function HospitalBookings() {
   const [admissions, setAdmissions] = useState([]);
   const [bedCategories, setBedCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [bedFilter, setBedFilter] = useState('all');
   const [actionLoading, setActionLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+
+  // Sync with URL query param
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q !== null) {
+      setSearchQuery(q);
+      if (q.trim()) {
+        setActiveTab('All');
+      }
+    }
+  }, [searchParams]);
+
+  const handleSearchChange = (val) => {
+    setSearchQuery(val);
+    const newParams = new URLSearchParams(searchParams);
+    if (val.trim()) {
+      newParams.set('q', val.trim());
+      setActiveTab('All');
+    } else {
+      newParams.delete('q');
+    }
+    setSearchParams(newParams, { replace: true });
+  };
 
   // QR Admission Modal State
   const [qrModalOpen, setQrModalOpen] = useState(false);
@@ -174,20 +199,32 @@ export default function HospitalBookings() {
 
   // Filter Bookings
   const filteredBookings = (data?.bookings || []).filter(b => {
-    if (activeTab !== 'All' && b.status.toLowerCase() !== activeTab.toLowerCase()) {
-      return false;
-    }
-    if (bedFilter !== 'all' && !b.bedType.toLowerCase().includes(bedFilter.toLowerCase())) {
-      return false;
+    // When actively searching, search across all statuses so the requested code/patient is immediately found
+    if (!searchQuery.trim()) {
+      if (activeTab !== 'All' && b.status.toLowerCase() !== activeTab.toLowerCase()) {
+        return false;
+      }
+      if (bedFilter !== 'all' && !b.bedType.toLowerCase().includes(bedFilter.toLowerCase())) {
+        return false;
+      }
     }
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
+      const hspId = (activeHospitalId || '').toLowerCase();
+      const hspCode = hspId ? `hsp-${hspId.slice(0, 8)}` : '';
       return (
-        b.patientName.toLowerCase().includes(q) ||
-        b.code.toLowerCase().includes(q) ||
-        b.department.toLowerCase().includes(q) ||
-        b.bedType.toLowerCase().includes(q) ||
-        (b.phone && b.phone.includes(q))
+        (b.id && b.id.toLowerCase().includes(q)) ||
+        (b.code && b.code.toLowerCase().includes(q)) ||
+        (b.id && `bk-${b.id.slice(0, 8).toLowerCase()}`.includes(q)) ||
+        (hspCode && (hspCode.includes(q) || q.includes('hsp'))) ||
+        (b.patientName && b.patientName.toLowerCase().includes(q)) ||
+        (b.doctorName && b.doctorName.toLowerCase().includes(q)) ||
+        (b.doctor && b.doctor.toLowerCase().includes(q)) ||
+        (b.department && b.department.toLowerCase().includes(q)) ||
+        (b.bedType && b.bedType.toLowerCase().includes(q)) ||
+        (b.phone && b.phone.includes(q)) ||
+        (b.abhaId && b.abhaId.toLowerCase().includes(q)) ||
+        (b.notes && b.notes.toLowerCase().includes(q))
       );
     }
     return true;
@@ -196,12 +233,17 @@ export default function HospitalBookings() {
   // Filter Admissions
   const filteredAdmissions = admissions.filter(a => {
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
+      const hspId = (activeHospitalId || '').toLowerCase();
+      const hspCode = hspId ? `hsp-${hspId.slice(0, 8)}` : '';
       return (
+        (a.id && a.id.toLowerCase().includes(q)) ||
         (a.patient_name && a.patient_name.toLowerCase().includes(q)) ||
         (a.bed_number && a.bed_number.toLowerCase().includes(q)) ||
         (a.abha_id && a.abha_id.toLowerCase().includes(q)) ||
-        (a.diagnosis && a.diagnosis.toLowerCase().includes(q))
+        (a.diagnosis && a.diagnosis.toLowerCase().includes(q)) ||
+        (a.doctor_name && a.doctor_name.toLowerCase().includes(q)) ||
+        (hspCode && (hspCode.includes(q) || q.includes('hsp')))
       );
     }
     return true;
@@ -462,12 +504,22 @@ export default function HospitalBookings() {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Search by patient, code, phone..."
+                    placeholder="Search BK-..., HSP-..., patient, doctor..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-56 sm:w-64"
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="pl-8 pr-7 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-60 sm:w-72"
                   />
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => handleSearchChange('')}
+                      className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      title="Clear search"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
 
                 <select
@@ -705,12 +757,22 @@ export default function HospitalBookings() {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Filter inpatients..."
+                  placeholder="Filter inpatients by name, ABHA, bed..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-56"
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="pl-8 pr-7 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-60"
                 />
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => handleSearchChange('')}
+                    className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    title="Clear filter"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
 

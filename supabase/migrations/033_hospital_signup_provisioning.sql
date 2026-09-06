@@ -175,10 +175,31 @@ BEGIN
     ON CONFLICT (user_id, hospital_id) DO UPDATE
     SET is_active = true, role = 'hospital_admin', updated_at = now();
 
-    -- Ensure profile role is hospital_admin
-    UPDATE public.profiles
-    SET role = 'hospital_admin', updated_at = now()
-    WHERE id = v_user_id;
+    -- Ensure profile exists and role is hospital_admin
+    INSERT INTO public.profiles (
+        id,
+        full_name,
+        email,
+        phone,
+        role,
+        is_active,
+        onboarding_completed,
+        created_at,
+        updated_at
+    ) VALUES (
+        v_user_id,
+        COALESCE((SELECT raw_user_meta_data->>'full_name' FROM auth.users WHERE id = v_user_id), 'Hospital Administrator'),
+        COALESCE((SELECT email FROM auth.users WHERE id = v_user_id), ''),
+        p_phone,
+        'hospital_admin',
+        true,
+        false,
+        now(),
+        now()
+    )
+    ON CONFLICT (id) DO UPDATE
+    SET role = 'hospital_admin',
+        updated_at = now();
 
     RETURN to_jsonb(v_hospital);
 END;

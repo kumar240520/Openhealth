@@ -10,7 +10,7 @@ export default function Footer() {
 
   return (
     <footer className="w-full border-t border-white/10 bg-[#050814]/90 backdrop-blur-xl py-8 px-6 lg:px-12 text-xs text-slate-400">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
 
         {/* Left Navigation */}
         <div className="flex flex-wrap items-center justify-center gap-6 text-slate-300">

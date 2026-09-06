@@ -260,7 +260,7 @@ export default function AppNavbar({ onToggleSidebar, isSidebarHovered = false })
       >
         
         {/* Full-width Responsive Navbar Content with Fluid Centered Search Bar */}
-        <div className="w-full h-full px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-2.5 sm:gap-4 relative">
+        <div className="w-full max-w-[1720px] mx-auto h-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 flex items-center justify-between gap-2.5 sm:gap-4 relative">
           
           {/* ===================================================================== */}
           {/* Left: Mobile Toggle & Context Breadcrumb */}
@@ -384,7 +384,7 @@ export default function AppNavbar({ onToggleSidebar, isSidebarHovered = false })
 
               {/* Location Management Popover Dropdown */}
               {locationPopoverOpen && (
-                <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-white border border-slate-200 shadow-xl p-4 z-50 text-xs flex flex-col gap-3">
+                <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-72 max-w-[92vw] rounded-2xl bg-white border border-slate-200 shadow-xl p-4 z-50 text-xs flex flex-col gap-3">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                     <span className="font-extrabold text-slate-900 text-xs">Location Mode</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
@@ -444,24 +444,25 @@ export default function AppNavbar({ onToggleSidebar, isSidebarHovered = false })
 
             </div>
 
-            {/* + Find Care AI Diagnostic Modal Trigger (Matching Reference Image 2) */}
+            {/* + Find Care AI Diagnostic Modal Trigger */}
             <button
               type="button"
               onClick={() => openAICareModal()}
-              className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer flex-shrink-0"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Find Care</span>
+              <span className="hidden sm:inline">Find Care</span>
             </button>
 
-            {/* Emergency Mode Primary Orchestration Button (Pixel-perfect matching reference image) */}
+            {/* Emergency Mode Primary Orchestration Button */}
             <button
               type="button"
               onClick={() => navigate('/app/emergency')}
-              className="flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md shadow-red-500/25 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md shadow-red-500/25 hover:scale-105 active:scale-95 transition-all cursor-pointer flex-shrink-0"
             >
               <Siren className="w-3.5 h-3.5 stroke-[2.5] animate-pulse" />
-              <span>Emergency Mode</span>
+              <span className="hidden sm:inline">Emergency Mode</span>
+              <span className="sm:hidden text-[11px] font-black tracking-tight">SOS</span>
             </button>
 
           {/* ================================================================= */}
@@ -481,7 +482,7 @@ export default function AppNavbar({ onToggleSidebar, isSidebarHovered = false })
             </button>
 
             {notifDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white border border-slate-200 shadow-2xl py-3 z-50 text-xs">
+              <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-[92vw] rounded-2xl bg-white border border-slate-200 shadow-2xl py-3 z-50 text-xs">
                 
                 {/* Header */}
                 <div className="px-4 pb-2.5 flex items-center justify-between border-b border-slate-100">
@@ -587,7 +588,7 @@ export default function AppNavbar({ onToggleSidebar, isSidebarHovered = false })
             </button>
 
             {profileDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-slate-200 shadow-2xl py-2 z-50 text-xs">
+              <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-64 max-w-[92vw] rounded-2xl bg-white border border-slate-200 shadow-2xl py-2 z-50 text-xs">
                 
                 {/* User Header */}
                 <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-3">

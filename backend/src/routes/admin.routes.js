@@ -21,6 +21,7 @@ router.get('/hospitals', adminController.getHospitals);
 router.get('/hospitals/:id', adminController.getHospitalById);
 router.patch('/hospitals/:id/verify', adminController.verifyHospital);
 router.patch('/hospitals/:id/status', adminController.toggleHospitalStatus);
+router.post('/hospitals/:id/dispatch', adminController.dispatchHospitalMessage);
 
 // 4. Doctor Management & Credential Verification
 router.get('/doctors', adminController.getDoctors);

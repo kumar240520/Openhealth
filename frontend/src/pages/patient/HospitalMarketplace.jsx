@@ -518,7 +518,7 @@ export default function HospitalMarketplace() {
   return (
     <AppLayout>
       {/* Main Marketplace Container */}
-      <main className="max-w-7xl w-full mx-auto px-4 sm:px-8 lg:px-10 py-6 sm:py-8">
+      <main className="max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6 sm:py-8 min-w-0">
         
         {/* Header Title & Subtitle */}
         <div className="mb-5">
@@ -562,7 +562,7 @@ export default function HospitalMarketplace() {
         </div>
 
         {/* Quick Discovery Specialty Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-2 custom-scrollbar select-none text-xs">
+        <div className="flex items-center gap-2 overflow-x-auto touch-scroll-x scrollbar-none pb-3 mb-2 custom-scrollbar select-none text-xs">
           {['All Specialties', 'Cardiology', 'Neurology', 'Orthopedics', 'Oncology', 'Pediatrics', 'Nephrology', 'Ophthalmology'].map(cat => {
             const isActive = selectedSpecialty === cat;
             return (
@@ -606,7 +606,7 @@ export default function HospitalMarketplace() {
               </button>
 
               {cityMenuOpen && (
-                <div className="absolute left-0 mt-2 w-56 rounded-2xl bg-white border border-slate-200 shadow-xl py-2 z-40 text-xs divide-y divide-slate-100 max-h-72 overflow-y-auto custom-scrollbar">
+                <div className="absolute left-0 mt-2 w-56 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border border-slate-200 shadow-xl py-2 z-40 text-xs divide-y divide-slate-100 max-h-72 overflow-y-auto custom-scrollbar">
                   {/* Detect GPS Button */}
                   <div className="p-1.5">
                     <button
@@ -702,7 +702,7 @@ export default function HospitalMarketplace() {
               </button>
 
               {radiusMenuOpen && (
-                <div className="absolute left-0 mt-2 w-44 rounded-2xl bg-white border border-slate-200 shadow-xl py-2 z-40 text-xs divide-y divide-slate-100">
+                <div className="absolute left-0 mt-2 w-44 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border border-slate-200 shadow-xl py-2 z-40 text-xs divide-y divide-slate-100">
                   <div className="py-1">
                     {[
                       { val: '5', label: 'Within 5 km' },
@@ -774,7 +774,7 @@ export default function HospitalMarketplace() {
               </button>
 
               {sortMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white border border-slate-200 shadow-xl py-2 z-40 text-xs">
+                <div className="absolute right-0 mt-2 w-48 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border border-slate-200 shadow-xl py-2 z-40 text-xs">
                   {[
                     { id: 'recommended', label: 'Recommended' },
                     { id: 'distance', label: 'Nearest First' },

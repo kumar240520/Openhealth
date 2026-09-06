@@ -105,6 +105,18 @@ class AdminController {
     }
   }
 
+  async dispatchHospitalMessage(req, res) {
+    try {
+      const { id } = req.params;
+      const { message } = req.body;
+      const data = await adminService.dispatchHospitalMessage(id, message, req.user?.id, req.ip);
+      return res.status(200).json({ success: true, message: 'Hospital dispatch notice sent successfully', data });
+    } catch (err) {
+      console.error('adminController.dispatchHospitalMessage error:', err);
+      return res.status(500).json({ success: false, message: err.message || 'Failed to dispatch hospital notice' });
+    }
+  }
+
   /**
    * 4. Doctor Credential Verification
    */

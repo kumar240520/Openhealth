@@ -35,10 +35,17 @@ export function HospitalProvider({ children }) {
           .eq('is_active', true)
           .maybeSingle();
 
-        if (membership?.hospital) {
-          setActiveHospital(membership.hospital);
-          setActiveHospitalId(membership.hospital.id);
-          localStorage.setItem('openhealth_active_hospital_id', membership.hospital.id);
+        if (membership?.hospital?.id) {
+          const { data: freshHosp } = await supabase
+            .from('hospitals')
+            .select('*')
+            .eq('id', membership.hospital.id)
+            .single();
+
+          const hospData = freshHosp || membership.hospital;
+          setActiveHospital(hospData);
+          setActiveHospitalId(hospData.id);
+          localStorage.setItem('openhealth_active_hospital_id', hospData.id);
           setLoading(false);
           return;
         }
@@ -111,6 +118,42 @@ export function HospitalProvider({ children }) {
   useEffect(() => {
     loadHospitalTenant();
   }, [loadHospitalTenant, refreshIndex]);
+
+  // Real-time CDC synchronization: listen for facility updates (including Platform Admin verification approval)
+  useEffect(() => {
+    if (!activeHospitalId) return;
+
+    const channelName = `hospital-realtime-deflection-${activeHospitalId}`;
+
+    // Clean up any lingering channel with the same name before creating
+    const existing = supabase.getChannels().find(ch => ch.topic === `realtime:${channelName}`);
+    if (existing) {
+      supabase.removeChannel(existing);
+    }
+
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'hospitals',
+          filter: `id=eq.${activeHospitalId}`
+        },
+        (payload) => {
+          console.log('[Hospital Realtime Sync] Received live hospital update:', payload.new);
+          if (payload.new) {
+            setActiveHospital(payload.new);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeHospitalId]);
 
   // Real-time update to hospitals table
   const updateHospital = async (updates) => {

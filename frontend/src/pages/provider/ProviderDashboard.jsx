@@ -38,53 +38,55 @@ export default function ProviderDashboard() {
     <div className="min-h-screen bg-[#050814] text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200">
       
       {/* Top Navbar */}
-      <header className="sticky top-0 z-40 bg-[#070c18]/90 backdrop-blur-xl border-b border-white/10 px-4 sm:px-8 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => navigate('/')} 
-            className="flex items-center gap-2.5 group cursor-pointer focus:outline-none"
-          >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-400 to-teal-300 flex items-center justify-center shadow-md shadow-cyan-500/30 group-hover:scale-105 transition-transform">
-              <Activity className="w-5 h-5 text-slate-950 stroke-[3]" />
-            </div>
-            <span className="font-black text-lg text-white tracking-tight">OpenHealth</span>
-          </button>
-          <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-teal-500/15 border border-teal-400/40 text-teal-300 text-[11px] font-bold uppercase tracking-wider">
-            Provider & Claims Hub
-          </span>
-        </div>
-
-        {/* User & Sign Out */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl bg-white/[0.06] border border-white/10">
-            <div className="w-7 h-7 rounded-full bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 text-xs font-bold">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <div className="hidden sm:flex flex-col text-left">
-              <span className="text-xs font-bold text-white leading-tight">
-                {profile?.full_name || 'Organization Provider'}
-              </span>
-              <span className="text-[10px] text-teal-300 font-mono uppercase">
-                {profile?.role || 'insurance_user'}
-              </span>
-            </div>
+      <header className="sticky top-0 z-40 bg-[#070c18]/90 backdrop-blur-xl border-b border-white/10 px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-3.5">
+        <div className="w-full max-w-[1720px] mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => navigate('/')} 
+              className="flex items-center gap-2.5 group cursor-pointer focus:outline-none"
+            >
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-400 to-teal-300 flex items-center justify-center shadow-md shadow-cyan-500/30 group-hover:scale-105 transition-transform">
+                <Activity className="w-5 h-5 text-slate-950 stroke-[3]" />
+              </div>
+              <span className="font-black text-lg text-white tracking-tight">OpenHealth</span>
+            </button>
+            <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-teal-500/15 border border-teal-400/40 text-teal-300 text-[11px] font-bold uppercase tracking-wider">
+              Provider & Claims Hub
+            </span>
           </div>
 
-          <button
-            onClick={async () => {
-              await signOut();
-              navigate('/login');
-            }}
-            title="Sign Out"
-            className="p-2 rounded-2xl bg-white/[0.06] hover:bg-red-500/20 border border-white/10 hover:border-red-500/40 text-slate-300 hover:text-red-300 transition-all cursor-pointer shadow-md"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          {/* User & Sign Out */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl bg-white/[0.06] border border-white/10">
+              <div className="w-7 h-7 rounded-full bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 text-xs font-bold">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <div className="hidden sm:flex flex-col text-left">
+                <span className="text-xs font-bold text-white leading-tight">
+                  {profile?.full_name || 'Organization Provider'}
+                </span>
+                <span className="text-[10px] text-teal-300 font-mono uppercase">
+                  {profile?.role || 'insurance_user'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={async () => {
+                await signOut();
+                navigate('/login');
+              }}
+              title="Sign Out"
+              className="p-2 rounded-2xl bg-white/[0.06] hover:bg-red-500/20 border border-white/10 hover:border-red-500/40 text-slate-300 hover:text-red-300 transition-all cursor-pointer shadow-md"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Layout */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-8 py-8 flex flex-col gap-8">
+      <main className="max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6 sm:py-8 flex flex-col gap-8 min-w-0">
         
         {/* Banner */}
         <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-teal-950/60 via-slate-900 to-slate-950 border border-teal-500/30 p-6 sm:p-8 shadow-2xl">
@@ -130,8 +132,8 @@ export default function ProviderDashboard() {
               Live Insurance & Government Scheme Claims
             </h2>
 
-            <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#080f1e]/80 shadow-xl">
-              <table className="w-full text-left text-xs sm:text-sm">
+            <div className="overflow-x-auto touch-scroll-x rounded-2xl border border-white/10 bg-[#080f1e]/80 shadow-xl w-full">
+              <table className="w-full min-w-[680px] text-left text-xs sm:text-sm">
                 <thead className="bg-white/[0.04] text-slate-400 font-bold uppercase text-[11px] border-b border-white/10">
                   <tr>
                     <th className="py-3.5 px-5">Claim ID</th>

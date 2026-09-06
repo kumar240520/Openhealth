@@ -2,15 +2,38 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import HospitalSidebar from './HospitalSidebar';
 import HospitalNavbar from './HospitalNavbar';
-import { HospitalProvider } from '../../../context/HospitalContext';
+import HospitalVerificationLockOverlay from '../HospitalVerificationLockOverlay';
+import HospitalDispatchAlertModal from '../HospitalDispatchAlertModal';
+import { useHospital } from '../../../context/HospitalContext';
+import { useAuth } from '../../../context/AuthContext';
 import { Headphones } from 'lucide-react';
 
 function HospitalLayoutInner({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
+  const { user, profile } = useAuth();
+  const { activeHospital, refreshHospital } = useHospital();
+
+  const isHospitalStaffOrAdmin = profile?.role === 'hospital_admin' || 
+                                 profile?.role === 'hospital_staff' ||
+                                 user?.user_metadata?.role === 'hospital_admin' ||
+                                 user?.user_metadata?.role === 'hospital_staff';
+
+  const isVerificationPending = isHospitalStaffOrAdmin && activeHospital && activeHospital.verification_status !== 'verified';
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans flex">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans flex relative">
+      
+      {/* Verification Lock & Blur Overlay for unverified facilities */}
+      {isVerificationPending && (
+        <HospitalVerificationLockOverlay 
+          hospital={activeHospital} 
+          onRefresh={refreshHospital} 
+        />
+      )}
+
+      {/* Real-time Administrator Dispatch Notice Alert Pop-up */}
+      <HospitalDispatchAlertModal />
       
       {/* Fixed Left Sidebar (Spring expandable rail) */}
       <HospitalSidebar 
@@ -41,13 +64,15 @@ function HospitalLayoutInner({ children }) {
         />
 
         {/* Scrollable Page Content (Offset by 16 for fixed navbar) */}
-        <div className="flex-1 pt-16 min-h-screen flex flex-col justify-between">
-          <div className="p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <div className={`flex-1 pt-16 min-h-screen flex flex-col justify-between transition-all duration-300 ${
+          isVerificationPending ? 'filter blur-[3px] pointer-events-none select-none' : ''
+        }`}>
+          <div className="p-4 sm:p-6 lg:p-8 xl:px-10 2xl:px-12 w-full max-w-[1720px] mx-auto min-w-0">
             {children}
           </div>
 
           {/* Footer on every screen matching PDF screenshots */}
-          <footer className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
+          <footer className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-4 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
             <span>© 2025 OpenHealth. All rights reserved.</span>
             <a 
               href="mailto:support@openhealth.in"
@@ -67,9 +92,5 @@ function HospitalLayoutInner({ children }) {
 }
 
 export default function HospitalLayout({ children }) {
-  return (
-    <HospitalProvider>
-      <HospitalLayoutInner>{children}</HospitalLayoutInner>
-    </HospitalProvider>
-  );
+  return <HospitalLayoutInner>{children}</HospitalLayoutInner>;
 }

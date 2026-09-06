@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { getCachedLocation } from './geolocationService';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1') + '/emergency';
 
@@ -59,8 +60,9 @@ const emergencyService = {
 
     // Direct Supabase Fallback Query
     try {
-      const pLat = parseFloat(params.latitude) || 22.7533;
-      const pLng = parseFloat(params.longitude) || 75.8937;
+      const cached = getCachedLocation();
+      const pLat = parseFloat(params.latitude) || cached?.lat || 26.2183;
+      const pLng = parseFloat(params.longitude) || cached?.lng || 78.1828;
       const maxRadiusKm = params.radiusM ? params.radiusM / 1000 : 35;
 
       const { data, error } = await supabase
@@ -197,32 +199,39 @@ const emergencyService = {
         patientId = anyPat?.id || '29606830-ec38-4e89-a292-886ec5cfb244';
       }
 
+      const cached = getCachedLocation();
+      const fallbackLat = cached?.lat || 26.2183;
+      const fallbackLng = cached?.lng || 78.1828;
+
       const { data: session, error } = await supabase
         .from('emergency_sessions')
         .insert({
           patient_id: patientId,
           emergency_type: payload.emergencyType || 'Critical Medical Emergency',
           status: 'match_found',
-          latitude: payload.latitude || 22.7533,
-          longitude: payload.longitude || 75.8937,
+          latitude: payload.latitude || fallbackLat,
+          longitude: payload.longitude || fallbackLng,
           search_radius_m: payload.searchRadiusM || 15000
         })
         .select()
         .single();
 
       if (error) throw error;
-      return { session, patientLocation: { latitude: payload.latitude, longitude: payload.longitude } };
+      return { session, patientLocation: { latitude: payload.latitude || fallbackLat, longitude: payload.longitude || fallbackLng } };
     } catch (dbErr) {
       console.error('Direct fallback emergency session creation error:', dbErr);
+      const cached = getCachedLocation();
+      const fallbackLat = cached?.lat || 26.2183;
+      const fallbackLng = cached?.lng || 78.1828;
       // As ultimate safeguard, generate an in-memory emergency session so patient is never blocked
       return {
         session: {
           id: `EMG-${Date.now().toString().slice(-8)}`,
           status: 'match_found',
-          latitude: payload.latitude || 22.7533,
-          longitude: payload.longitude || 75.8937
+          latitude: payload.latitude || fallbackLat,
+          longitude: payload.longitude || fallbackLng
         },
-        patientLocation: { latitude: payload.latitude, longitude: payload.longitude }
+        patientLocation: { latitude: payload.latitude || fallbackLat, longitude: payload.longitude || fallbackLng }
       };
     }
   },
@@ -265,10 +274,11 @@ const emergencyService = {
       } catch (e) {}
     }
 
-    const pLat = parseFloat(payload.pickupLatitude) || 22.7533;
-    const pLng = parseFloat(payload.pickupLongitude) || 75.8937;
-    const hLat = hospitalInfo?.latitude ? parseFloat(hospitalInfo.latitude) : 22.7610;
-    const hLng = hospitalInfo?.longitude ? parseFloat(hospitalInfo.longitude) : 75.8970;
+    const cachedLoc = getCachedLocation();
+    const pLat = parseFloat(payload.pickupLatitude) || cachedLoc?.lat || 26.2183;
+    const pLng = parseFloat(payload.pickupLongitude) || cachedLoc?.lng || 78.1828;
+    const hLat = hospitalInfo?.latitude ? parseFloat(hospitalInfo.latitude) : (cachedLoc?.lat || 26.2183);
+    const hLng = hospitalInfo?.longitude ? parseFloat(hospitalInfo.longitude) : (cachedLoc?.lng || 78.1828);
     const distKm = calculateDistanceKm(pLat, pLng, hLat, hLng) || 2.4;
     const etaMin = Math.max(3, Math.round(distKm * 2.0 + 1));
 

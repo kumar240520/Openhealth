@@ -155,7 +155,7 @@ export default function HospitalAppointments() {
 
   return (
     <HospitalLayout>
-      <div className="space-y-6 max-w-7xl mx-auto pb-16">
+      <div className="space-y-6 w-full max-w-[1720px] mx-auto pb-16 min-w-0">
         {/* Toast Notification */}
         <AnimatePresence>
           {toastMessage && (
@@ -329,7 +329,7 @@ export default function HospitalAppointments() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search patient, doctor, or code..."
-                className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full pl-9 pr-3 py-2 text-xs bg-white text-slate-900 placeholder-slate-400 border border-slate-200 rounded-xl shadow-2xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
 

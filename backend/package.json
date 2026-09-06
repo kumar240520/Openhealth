@@ -1,0 +1,31 @@
+{
+  "name": "openhealth-backend",
+  "version": "1.0.0",
+  "description": "OpenHealth Healthcare Discovery & Transparency REST API Backend",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-validator": "^7.2.1",
+    "helmet": "^8.0.0",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  },
+  "keywords": [
+    "healthcare",
+    "openhealth",
+    "transparency",
+    "beds",
+    "hospital"
+  ],
+  "author": "OpenHealth Team",
+  "license": "MIT"
+}
